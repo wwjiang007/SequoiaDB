@@ -1,4 +1,4 @@
 SequoiaDB
 =========
 
-This is SequoiaDB README file.
+This is SequoiaDB README file
