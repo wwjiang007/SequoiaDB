@@ -137,8 +137,8 @@ Building Drivers:
 Building Connectors:
 -----------------
 	Hadoop Connector:
-                cd driver/java
-                scons
+		cd driver/java
+		scons
 		cd driver/hadoop/hadoop-connector
 		ant -Dhadoop.version=2.2
 	Hive Connector:
