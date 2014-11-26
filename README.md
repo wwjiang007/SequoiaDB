@@ -144,7 +144,11 @@ Building Connectors:
 		ant -Dhadoop.version=2.2
 	Hive Connector:
 		cd driver/java
+<<<<<<< HEAD
 		scons
+=======
+                scons
+>>>>>>> 32a62ef9ff03d7fa0756c3be203c3400f591b0cf
 		cd driver/hadoop/hive
 		ant
 	Storm Connector:
@@ -184,12 +188,20 @@ Running:
 
 Documentation:
 -----------------
+<<<<<<< HEAD
 [SequoiaDB Home Page](http://www.sequoiadb.com/)
+=======
+	http://www.sequoiadb.com/
+>>>>>>> 32a62ef9ff03d7fa0756c3be203c3400f591b0cf
 
 
 Restrictions:
 -----------------
+<<<<<<< HEAD
 	- SequoiaDB officially supports x86_64 and ppc64 Linux build on CentOS, Redhat, SUSE and Ubuntu.
+=======
+	- SequoiaDB officially only support 64 bit Linux build on CentOS, Redhat, SUSE and Ubuntu.
+>>>>>>> 32a62ef9ff03d7fa0756c3be203c3400f591b0cf
 	- Windows build and 32 bit build are for testing purpose only.
 
 
