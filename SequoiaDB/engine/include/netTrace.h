@@ -1,0 +1,54 @@
+/* This list file is automatically generated,you shoud NOT modify this file anyway! */
+#ifndef netTRACE_H__
+#define netTRACE_H__
+#define SDB__NETEVNHND_SETOPT                              0x8000000634L
+#define SDB__NETEVNHND_SYNCCONN                            0x8000000635L
+#define SDB__NETEVNHND_ASYNCRD                             0x8000000636L
+#define SDB__NETEVNHND_SYNCSND                             0x8000000637L
+#define SDB__NETEVNHND__ALLOBUF                            0x8000000638L
+#define SDB__NETEVNHND__RDCALLBK                           0x8000000639L
+#define SDB_NETMLTRTAGT_SYNCSENDWITHOUTSESSION             0x800000063aL
+#define SDB_NETMLTRTAGT_SYNCSEND                           0x800000063bL
+#define SDB_NETMLTRTAGT_SYNCSEND2                          0x800000063cL
+#define SDB_NETMLTRTAGT_MULTSYNCSND                        0x800000063dL
+#define SDB_NETMLTRTAGT_HNDCLS                             0x800000063eL
+#define SDB_NETMLTRTAGT_HNDMSG                             0x800000063fL
+#define SDB_NETMLTRTAGT_ADDSESS                            0x8000000640L
+#define SDB_NETMLTRTAGT_GETSESS                            0x8000000641L
+#define SDB_NETMLTRTAGT_DELSESS                            0x8000000642L
+#define SDB_NETMLTRTAGT_ISSUBSESSCONN                      0x8000000643L
+#define SDB__NETFRAME_DECONS                               0x8000000644L
+#define SDB__NETFRAME_RUN                                  0x8000000645L
+#define SDB__NETFRAME_STOP                                 0x8000000646L
+#define SDB__NETFRAME_LISTEN                               0x8000000647L
+#define SDB__NETFRAME_SYNNCCONN                            0x8000000648L
+#define SDB__NETFRAME_SYNCSEND                             0x8000000649L
+#define SDB__NETFRAME_SYNCSEND2                            0x800000064aL
+#define SDB__NETFRAME_SYNCSEND3                            0x800000064bL
+#define SDB__NETFRAME_SYNCSEND4                            0x800000064cL
+#define SDB__NETFRAME_SYNCSENDV                            0x800000064dL
+#define SDB__NETFRAME_CLOSE                                0x800000064eL
+#define SDB__NETFRAME_CLOSE2                               0x800000064fL
+#define SDB__NETFRAME_CLOSE3                               0x8000000650L
+#define SDB__NETFRAME_ADDTIMER                             0x8000000651L
+#define SDB__NETFRAME_REMTIMER                             0x8000000652L
+#define SDB__NETFRAME_HNDMSG                               0x8000000653L
+#define SDB__NETFRAME__ADDRT                               0x8000000654L
+#define SDB__NETFRAME__ASYNCAPT                            0x8000000655L
+#define SDB__NETFRAME__APTCALLBCK                          0x8000000656L
+#define SDB__NETFRAME__ERASE                               0x8000000657L
+#define SDB__NETRT_ROUTE                                   0x8000000658L
+#define SDB__NETRT_ROUTE2                                  0x8000000659L
+#define SDB__NETRT_UPDATE                                  0x800000065aL
+#define SDB__NETRT_UPDATE2                                 0x800000065bL
+#define SDB__NETRT_UPDATE3                                 0x800000065cL
+#define SDB__NETRT_CLEAR                                   0x800000065dL
+#define SDB__NETRTAG_UPRT                                  0x800000065eL
+#define SDB__NETRTAG_UPRT2                                 0x800000065fL
+#define SDB__NETRTAG_UPRT3                                 0x8000000660L
+#define SDB__NETRTAG_LSTN                                  0x8000000661L
+#define SDB__NETRTAG_SYNCSND                               0x8000000662L
+#define SDB__NETRTAG_SYNCSND2                              0x8000000663L
+#define SDB__NETRTAG_SYNCSND3                              0x8000000664L
+#define SDB__NETRTAG_SYNCSNDV                              0x8000000665L
+#endif
