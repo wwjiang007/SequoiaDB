@@ -28,10 +28,6 @@
    RET_JSON: the format is: {"errno":0,"detail":"","IP":"192.168.20.165","HasUninstall":true}
 */
 
-// println
-//var BUS_JSON = { "HostInfo": { "IP": "192.168.20.165", "HostName": "rhel64-test8", "User": "root", "Passwd": "sequoiadb", "SshPort": "22", "AgentPort": "11790", "InstallPath": "/opt/sequoiadb" } } ;
-
-
 var RET_JSON       = new addHostRollbackResult() ;
 var errMsg         = "" ;
 
@@ -50,9 +46,19 @@ function uninstallDBPacket ( ssh, osInfo, path )
    var path = adaptPath( osInfo, path ) ;
    if ( OMA_LINUX == osInfo )
    {
-      cmd = path + OMA_PROG_UNINSTALL_L ;
+      // try to stop sdbcm
       try
       {
+         cmd = path + OMA_PROG_BIN_SDBCMTOP_L ;
+         ssh.exec( cmd ) ;
+      }
+      catch ( e )
+      {
+      }
+      // remove db packet
+      try
+      {
+         cmd = path + OMA_PROG_UNINSTALL_L ;
          ssh.exec( "chmod a+x " + cmd ) ;
          ssh.exec( cmd + " --mode unattended " ) ;
       }
@@ -123,7 +129,6 @@ function main()
       if ( isLocal )
       {
          RET_JSON[HasUninstall] = true ;
-//println("RET_JSON is:" + JSON.stringify(RET_JSON))
          return RET_JSON ; 
       }
       // uninstall business packet from remote host
@@ -137,7 +142,6 @@ function main()
    }
 
    // return the result
-//println("RET_JSON is:" + JSON.stringify(RET_JSON))
    return RET_JSON ;
 }
 

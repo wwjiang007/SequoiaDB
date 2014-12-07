@@ -76,6 +76,7 @@ Building Prerequisites:
 	scons ( 2.3.0 )
 	ant ( 1.8.2 )
         Python ( 2.7.3 )
+        PostgreSQL ( 9.3.4 )
 	Linux x86-64:
 		g++ ( 4.3.4 )
 		gcc ( 4.3.4 )
@@ -120,11 +121,12 @@ Building Drivers:
 		scons --client
 	PHP Client:
 		cd driver/php5
-		scons --phpversion=5.3.10
+		scons --phpversion=5.4.6
 		Note:
 			PHP source code is located in thirdparty/php directory
 			The dir name must be "php-<version>"
 	Python Client:
+                <python-devel package is required>
 		cd driver/python
 		scons
 	Java Client:

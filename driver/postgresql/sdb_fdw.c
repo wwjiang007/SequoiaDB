@@ -156,6 +156,7 @@ static SdbConnectionPool *sdbGetConnectionPool(  ) ;
 static int sdbSetConnectionPreference(  ) ;
 static int sdbGetSdbServerOptions( Oid foreignTableId, SdbExecState *sdbExecState ) ;
 
+static void sdbReleaseConnectionFromPool( int index ) ;
 static sdbConnectionHandle sdbGetConnectionHandle( const char *host, 
       const char *port, const char *usr, const char *passwd, const char *preference_instance ) ;
 static sdbCollectionHandle sdbGetSdbCollection( sdbConnectionHandle connectionHandle, 
@@ -281,6 +282,34 @@ int sdbGetSdbServerOptions( Oid foreignTableId, SdbExecState *sdbExecState )
    return 0 ;
 }
 
+void sdbReleaseConnectionFromPool( int index )
+{
+   INT32 i = index ;
+   SdbConnection *connection = NULL ;
+   INT32 j = i + 1 ;
+
+   SdbConnectionPool *pool = sdbGetConnectionPool() ;
+   if ( i >= pool->numConnections )
+   {
+      return ;
+   }
+
+   connection = &pool->connList[i] ;
+   if( connection->connName )
+   {
+      free( connection->connName ) ;
+   }
+   sdbDisconnect( connection->hConnection ) ;
+   sdbReleaseConnection( connection->hConnection ) ;
+
+   for ( ; j < pool->numConnections ; ++i, ++j )
+   {
+      pool->connList[i] = pool->connList[j] ;
+   }
+   
+   pool->numConnections-- ;
+}
+
 sdbConnectionHandle sdbGetConnectionHandle( const char *host, 
       const char *port, const char *usr, const char *passwd, const char *preference_instance )
 {
@@ -298,9 +327,23 @@ sdbConnectionHandle sdbGetConnectionHandle( const char *host,
    pool = sdbGetConnectionPool() ;
    for ( count = 0 ; count < pool->numConnections ; ++count )
    {
-      if ( strcmp( pool->connList[count].connName, connName->data )== 0 )
+      SdbConnection *tmpConnection = &pool->connList[count] ;
+      if ( strcmp( tmpConnection->connName, connName->data )== 0 )
       {
-         return pool->connList[count].hConnection ;
+         BOOLEAN result = FALSE ;
+         sdbIsValid( tmpConnection->hConnection, &result ) ;
+         if ( !result )
+         {
+            sdbReleaseConnectionFromPool( count ) ;
+            break ;
+         }
+      
+         if ( tmpConnection->transLevel <= 0 )
+         {
+            tmpConnection->transLevel = 1 ;
+         }
+         
+         return tmpConnection->hConnection;
       }
    }
    
@@ -352,8 +395,9 @@ sdbConnectionHandle sdbGetConnectionHandle( const char *host,
    connect = &pool->connList[pool->numConnections] ;
    connect->connName      = strdup( connName->data ) ;
    connect->hConnection   = hConnection ;
-   connect->transLevel    = 0 ;
+   connect->transLevel    = 1 ;
    pool->numConnections++ ;
+
 
    return hConnection ;
 }
@@ -703,6 +747,14 @@ int sdbSetBsonValue( sdbbson *bsonObj, const char *name, Datum valueDatum,
          sdbbson_append_timestamp( bsonObj, name, &bson_time ) ;
          break ;
       }
+      case BYTEAOID :
+      {
+			CHAR *buff = VARDATA( ( bytea * )DatumGetPointer( valueDatum ) );
+			INT32 len  = VARSIZE( ( bytea * )DatumGetPointer( valueDatum ) ) 
+			             - VARHDRSZ;
+         sdbbson_append_binary( bsonObj, name, BSON_BINDATA, buff, len ) ;
+         break ;
+      }
 
       case TEXTARRAYOID:
       case INT4ARRAYOID:
@@ -712,6 +764,7 @@ int sdbSetBsonValue( sdbbson *bsonObj, const char *name, Datum valueDatum,
       /* this type do not have type name, so we must use the value(see more types in pg_type.h) */ 
       case 1115:
       case 1182:
+      case 1014 :
       {
          Datum datumTmp ;
          bool isNull            = false ;
@@ -734,7 +787,7 @@ int sdbSetBsonValue( sdbbson *bsonObj, const char *name, Datum valueDatum,
       default :
       {
          /* we do not support other data types */
-         ereport ( ERROR, ( errcode( ERRCODE_FDW_INVALID_DATA_TYPE ),
+         ereport ( WARNING, ( errcode( ERRCODE_FDW_INVALID_DATA_TYPE ),
             errmsg( "Cannot convert constant value to BSON" ), 
             errhint( "Constant value data type: %u", columnType ) ) ) ;
          
@@ -815,12 +868,16 @@ void sdbGetColumnKeyInfo( SdbExecState *fdw_state )
          NULL, &cursor ) ;
    if ( SDB_OK != rc )
    {
-      sdbPrintBson( &condition, WARNING ) ;
-      sdbPrintBson( &selector, WARNING ) ;
+      if ( rc != SDB_RTN_COORD_ONLY )
+      {
+         sdbPrintBson( &condition, WARNING ) ;
+         sdbPrintBson( &selector, WARNING ) ;
+         ereport( WARNING, ( errcode( ERRCODE_FDW_ERROR ), 
+                  errmsg( "sdbGetSnapshot failed:rc=%d", rc ) ) ) ;
+      }
+
       sdbbson_destroy( &condition ) ;
       sdbbson_destroy( &selector ) ;
-      ereport( WARNING, ( errcode( ERRCODE_FDW_ERROR ), 
-            errmsg( "sdbGetSnapshot failed:rc=%d", rc ) ) ) ;
       return ;
    }
 
@@ -1188,8 +1245,15 @@ INT32 sdbRecurScalarArrayOpExpr( ScalarArrayOpExpr *scalaExpr,
          sdbbson temp ;
          Const *const_val = ( Const * )oprarg ;
          sdbbson_init( &temp ) ;
-         sdbSetBsonValue( &temp, keyName, const_val->constvalue, 
-                              const_val->consttype, const_val->consttypmod ) ;
+         rc = sdbSetBsonValue( &temp, keyName, const_val->constvalue, 
+                               const_val->consttype, const_val->consttypmod ) ;
+         if ( SDB_OK != rc )
+         {
+            sdbbson_destroy( &temp ) ;
+            ereport ( WARNING, ( errcode( ERRCODE_FDW_INVALID_DATA_TYPE ),
+                      errmsg( "convert value failed:key=%s", keyName ) ) ) ;
+            goto error ;
+         }
          sdbbson_finish( &temp ) ;
          sdbbson_append_sdbbson( condition, columnName, &temp ) ;
          sdbbson_destroy( &temp ) ;
@@ -1579,9 +1643,8 @@ void sdbAppendConstantValue ( sdbbson *bsonObj, const char *keyName,
          constant->consttype, constant->consttypmod ) ;
    if ( SDB_OK != rc )
    {
-      ereport ( ERROR, ( errcode( ERRCODE_FDW_INVALID_DATA_TYPE ),
-            errmsg( "Cannot convert constant value to BSON" ), 
-            errhint( "Constant value data type: %u", constant->consttype ) ) ) ;
+      ereport ( WARNING, ( errcode( ERRCODE_FDW_INVALID_DATA_TYPE ),
+                errmsg( "convert value failed:key=%s", keyName ) ) ) ;
    }
    
 }
@@ -1998,6 +2061,14 @@ static BOOLEAN sdbColumnTypesCompatible( sdbbson_type sdbbsonType, Oid columnTyp
          compatibleType = TRUE ;
       break ;
    }
+   case BYTEAOID :
+   {
+      if ( ( BSON_BINDATA == sdbbsonType ) )
+      {
+         compatibleType = TRUE ;
+      }
+      break ;
+   }
    default :
    {
       ereport( ERROR,( errcode( ERRCODE_FDW_INVALID_DATA_TYPE ),
@@ -2112,6 +2183,19 @@ static Datum sdbColumnValue( sdbbson_iterator *sdbbsonIterator, Oid columnTypeId
       INT64 timestamp      = utcUsecs - POSTGRES_TO_UNIX_EPOCH_USECS ;
       Datum timestampDatum = TimestampGetDatum( timestamp ) ;
       columnValue = DirectFunctionCall1( timestamptz_timestamp, timestampDatum ) ;
+      break ;
+   }
+   case BYTEAOID :
+   {
+      const CHAR *buff = sdbbson_iterator_bin_data( sdbbsonIterator ) ;
+      INT32 len        = sdbbson_iterator_bin_len( sdbbsonIterator ) ;
+
+      bytea *result = (bytea *)palloc( len + VARHDRSZ ) ;
+      memcpy( VARDATA(result), buff, len ) ;
+      SET_VARSIZE(result, len + VARHDRSZ) ;
+
+      columnValue = PointerGetDatum(result) ;
+      
       break ;
    }
    default :
@@ -2600,12 +2684,12 @@ static void SdbBeginForeignScan( ForeignScanState *scanState,
          NULL, 0, -1, &fdw_state->hCursor ) ;
    if ( rc )
    {
+      sdbPrintBson( &fdw_state->queryDocument, WARNING ) ;
       ereport( ERROR, ( errcode ( ERRCODE_FDW_ERROR ),
             errmsg( "query collection failed:cs=%s,cl=%s,rc=%d", 
                fdw_state->sdbcs, fdw_state->sdbcl, rc ),
             errhint( "Make sure collection exists on remote SequoiaDB database" ) ) ) ;
       
-      sdbPrintBson( &fdw_state->queryDocument, WARNING ) ;
       sdbbson_dispose( &fdw_state->queryDocument ) ;
       return ;
    }
@@ -3043,8 +3127,18 @@ TupleTableSlot *SdbExecForeignInsert( EState *estate, ResultRelInfo *rinfo,
          continue ;
       }
 
-      sdbSetBsonValue( &insert, tableDesc->cols[attnum].pgname, slot->tts_values[attnum], 
-         tableDesc->cols[attnum].pgtype, tableDesc->cols[attnum].pgtypmod ) ;
+      rc = sdbSetBsonValue( &insert, tableDesc->cols[attnum].pgname, 
+                            slot->tts_values[attnum], 
+                            tableDesc->cols[attnum].pgtype, 
+                            tableDesc->cols[attnum].pgtypmod ) ;
+      if ( SDB_OK != rc )
+      {
+         ereport ( WARNING, ( errcode( ERRCODE_FDW_INVALID_DATA_TYPE ),
+                   errmsg( "convert value failed:key=%s", 
+                   tableDesc->cols[attnum].pgname ) ) ) ;
+         sdbbson_destroy( &insert ) ;
+         return NULL ;
+      }
    }
 
    rc = sdbbson_finish( &insert ) ;
@@ -3131,9 +3225,18 @@ TupleTableSlot *SdbExecForeignUpdate( EState *estate, ResultRelInfo *rinfo,
       datum = slot_getattr( slot, fdw_state->pgTableDesc->cols[i].pgattnum, &isnull ) ;
       if ( !isnull )
       {
-         sdbSetBsonValue( &sdbbsonTempValue, fdw_state->pgTableDesc->cols[i].pgname, 
-            datum, fdw_state->pgTableDesc->cols[i].pgtype, 
-            fdw_state->pgTableDesc->cols[i].pgtypmod ) ;
+         rc = sdbSetBsonValue( &sdbbsonTempValue, 
+                               fdw_state->pgTableDesc->cols[i].pgname, 
+                               datum, fdw_state->pgTableDesc->cols[i].pgtype, 
+                               fdw_state->pgTableDesc->cols[i].pgtypmod ) ;
+         if ( SDB_OK != rc )
+         {
+            ereport ( WARNING, ( errcode( ERRCODE_FDW_INVALID_DATA_TYPE ),
+                      errmsg( "convert value failed:key=%s", 
+                      fdw_state->pgTableDesc->cols[i].pgname ) ) ) ;
+            sdbbson_destroy( &sdbbsonTempValue ) ;
+            return NULL ;
+         }
       }
    }
    sdbbson_finish( &sdbbsonTempValue ) ;
@@ -3217,11 +3320,9 @@ static void SdbFdwXactCallback( XactEvent event, void *arg )
       switch( event )
       {
       case XACT_EVENT_COMMIT :
-         sdbTransactionCommit( pool->connList[count].hConnection ) ;
          pool->connList[count].transLevel = 0 ;
          break ;
       case XACT_EVENT_ABORT :
-         sdbTransactionRollback( pool->connList[count].hConnection ) ;
          pool->connList[count].transLevel = 0 ;
          break ;
       default :

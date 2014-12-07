@@ -284,7 +284,9 @@ namespace engine
 
       if ( CLS_TID_REPL_SYC == tid )
       {
-         sessionType = SDB_SESSION_REPL ;
+         sessionType = PMD_SESSION_ACTIVE == startType ?
+                       SDB_SESSION_REPL_DST :
+                       SDB_SESSION_REPL_SRC ;
       }
       else if ( CLS_TID_REPL_FS_SYC == tid )
       {
@@ -324,9 +326,20 @@ namespace engine
    {
       pmdAsyncSession *pSession = NULL ;
 
-      if ( SDB_SESSION_REPL == sessionType )
+      if ( SDB_SESSION_REPL_DST == sessionType )
       {
-         pSession = SDB_OSS_NEW _clsReplSession ( sessionID ) ;
+         pSession = SDB_OSS_NEW clsReplDstSession( sessionID ) ;
+      }
+      else if ( SDB_SESSION_REPL_SRC == sessionType )
+      {
+         UINT32 nodeID = 0 ;
+         UINT32 tid = 0 ;
+         ossUnpack32From64( sessionID, nodeID, tid ) ;
+
+         if ( pmdGetNodeID().columns.nodeID != nodeID )
+         {
+            pSession = SDB_OSS_NEW clsReplSrcSession( sessionID ) ;
+         }
       }
       else if ( SDB_SESSION_FS_DST == sessionType )
       {
