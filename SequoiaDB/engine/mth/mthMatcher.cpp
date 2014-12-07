@@ -113,6 +113,11 @@ namespace engine
       const CHAR *regex = NULL ;
       const CHAR *options = NULL ;
       SDB_ASSERT ( ele.type() != Undefined, "Undefined element type" ) ;
+      if ( isNot )
+      {
+         _totallyConverted = FALSE ;
+      }
+
       switch ( ele.type() )
       {
       case RegEx:
@@ -929,6 +934,14 @@ namespace engine
          }
       }
 
+      if ( BSONObj::GT != type &&
+           BSONObj::GTE != type &&
+           BSONObj::LT != type &&
+           BSONObj::LTE != type &&
+           BSONObj::Equality != type )
+      {
+         _totallyConverted = FALSE ;
+      }
    done :
       PD_TRACE_EXITRC ( SDB__MTHMACH__INJELE, rc );
       return rc ;

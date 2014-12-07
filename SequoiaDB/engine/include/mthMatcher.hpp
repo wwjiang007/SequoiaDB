@@ -258,6 +258,8 @@ namespace engine
       LogicMatchElement *_rlme;
       vector<BSONObjBuilder*> _builderList ;
 
+      BOOLEAN _totallyConverted ;
+
       INT32 _createLME ( LogicMatchElement *lme,
                          LogicMatchElement **clme,
                          INT32   logicType,
@@ -331,6 +333,7 @@ namespace engine
          _rlme        = NULL ;
          _initialized = FALSE ;
          _matchesAll  = TRUE ;
+         _totallyConverted = TRUE ;
       }
       ~_mthMatcher ()
       {
@@ -366,6 +369,16 @@ namespace engine
       BSONObj &getMatchPattern ()
       {
          return _matchPattern ;
+      }
+
+      BOOLEAN totallyConverted() const
+      {
+         return _totallyConverted ;
+      }
+
+      void setMatchesAll( BOOLEAN matchesAll )
+      {
+         _matchesAll = matchesAll ;
       }
    } ;
    typedef class _mthMatcher mthMatcher ;

@@ -1,3 +1,38 @@
+/*******************************************************************************
+
+   Copyright (C) 2011-2014 SequoiaDB Ltd.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the term of the GNU Affero General Public License, version 3,
+   as published by the Free Software Foundation.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warrenty of
+   MARCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with this program. If not, see <http://www.gnu.org/license/>.
+
+   Source File Name = pdFunctionLisp.cpp
+
+   Descriptive Name =
+
+   When/how to use:
+
+   Dependencies: N/A
+
+   Restrictions: N/A
+
+   Change Activity:
+   defect Date        Who Description
+   ====== =========== === ==============================================
+          12/1/2014  ly  Initial Draft
+
+   Last Changed =
+
+*******************************************************************************/
+
 /* This list file is automatically generated,you shoud NOT modify this file anyway! */
 #include "core.hpp"
 static const CHAR *_pTraceFunctionList[] = {
@@ -13,6 +48,7 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "_sdbCollectionImpl::_setName"
 ,   "_sdbCollectionImpl::_appendOID"
 ,   "_sdbCollectionImpl::_setConnection"
+,   "_sdbCollectionImpl::_getConnection"
 ,   "_sdbCollectionImpl::getCount"
 ,   "_sdbCollectionImpl::bulkInsert"
 ,   "_sdbCollectionImpl::insert"
@@ -33,7 +69,14 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "_sdbCollectionImpl::aggregate"
 ,   "_sdbCollectionImpl::attachCollection"
 ,   "_sdbCollectionImpl::detachCollection"
-,   "_sdbCollectionSpaceImpl::alterCollection"
+,   "_sdbCollectionImpl::alterCollection"
+,   "_sdbCollectionImpl::explain"
+,   "_sdbCollectionImpl::createLob"
+,   "_sdbCollectionImpl::removeLob"
+,   "_sdbCollectionImpl::openLob"
+,   "_sdbCollectionImpl::listLobs"
+,   "_sdbCollectionImpl::_runCmdOfLob"
+,   "_sdbCollectionImpl::getLobObj"
 ,   "_sdbNodeImpl::connect"
 ,   "_sdbNodeImpl::getStatus"
 ,   "_sdbNodeImpl::_stopStart"
@@ -60,6 +103,23 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "_sdbDomainImpl::alterDomain"
 ,   "_sdbDomainImpl::listCollectionSpacesInDomain"
 ,   "_sdbDomainImpl::listCollectionsInDomain"
+,   "_setLobImpl::_setConnection"
+,   "_sdbLobImpl::_setCollection"
+,   "_setLobImpl::_readInCache"
+,   "_setLobImpl::_reviseReadLen"
+,   "_setLobImpl::_onceRead"
+,   "_sdbLobImpl::close"
+,   "_sdbLobImpl::read"
+,   "_sdbLobImpl::write"
+,   "_sdbLobImpl::seek"
+,   "_sdbLobImpl::isClosed"
+,   "_sdbLobImpl::getOid"
+,   "_sdbLobImpl::getSize"
+,   "_sdbLobImpl::getCreateTime"
+,   "_sdbLobImpl::isClosed"
+,   "_sdbLobImpl::getOid"
+,   "_sdbLobImpl::getSize"
+,   "_sdbLobImpl::getCreateTime"
 ,   "_sdbImpl::_disconnect"
 ,   "_sdbImpl::_connect"
 ,   "_sdbImpl::connect"
@@ -105,6 +165,7 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "_sdbImpl::cancelTask"
 ,   "_sdbImpl::setSessionAttr"
 ,   "_sdbImpl::closeAllCursors"
+,   "_sdbImpl::isValid"
 ,   "_sdbImpl::isValid"
 ,   "_sdbImpl::createDomain"
 ,   "_sdbImpl::dropDomain"
@@ -512,6 +573,7 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "cs_drop_cl"
 ,   "domain_destructor"
 ,   "domain_alter"
+,   "domain_list_group"
 ,   "domain_list_cs"
 ,   "domain_list_cl"
 ,   "sdb_destructor"
@@ -637,6 +699,12 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "rtnCoordProcessGetGroupReply"
 ,   "rtnCoordProcessQueryCatReply"
 ,   "rtnCoordUpdateNodeStatByRC"
+,   "_rtnLobDataPool::match"
+,   "_rtnLobDataPool::allocate"
+,   "_rtnLobDataPool::next"
+,   "_rtnLobDataPool::push"
+,   "_rtnLobDataPool::pushDone"
+,   "_rtnLobDataPool::_seek"
 ,   "_rtnIXScanner::relocateRID"
 ,   "_rtnIXScanner::relocateRID"
 ,   "_rtnIXScanner::advance"
@@ -686,6 +754,7 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "_rtnCoordLobStream::_openOtherStreams"
 ,   "_rtnCoordLobStream::_openMainStream"
 ,   "_rtnCoordLobStream::_queryLobMeta"
+,   "_rtnCoordLobStream::_getLobPageSize"
 ,   "_rtnCoordLobStream::_write"
 ,   "_rtnCoordLobStream::_writev"
 ,   "_rtnCoordLobStream::_readv"
@@ -696,6 +765,12 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "_rtnCoordLobStream::__closeSubStreamsWithException"
 ,   "_rtnCoordLobStream::_extractMeta"
 ,   "_rtnCoordLobStream::_removev"
+,   "_rtnCoordLobStream::_getReply"
+,   "_rtnCoordLobStream::_reopenSubStreams"
+,   "_rtnCoordLobStream::_shardData"
+,   "_rtnCoordLobStream::_handleReadResults"
+,   "_rtnCoordLobStream::_add2DoneLstFromReply"
+,   "_rtnCoordLobStream::_add2DoneLst"
 ,   "rtnTransBegin"
 ,   "rtnTransCommit"
 ,   "rtnTransRollback"
@@ -703,7 +778,8 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "_rtnJobMgr::startJob"
 ,   "_rtnJobMgr::_removeJob"
 ,   "_rtnLobWindow::addOutputData"
-,   "_rtnLobWindow::getNextWriteSequence"
+,   "_rtnLobWindow::getNextWriteSequences"
+,   "_rtnLobWindow::_getNextWriteSequence"
 ,   "_rtnLobWindow::_rtnLobWindow::prepare2Read"
 ,   "rtnReorgOfflineCopyBack"
 ,   "rtnReorgRecover"
@@ -800,9 +876,6 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "rtnCoordCMDDropCollection::doOnCataGroup"
 ,   "rtnCoordCMDDropCollectionSpace::getGroupList"
 ,   "rtnCoordCMDDropCollectionSpace::doOnCataGroup"
-,   "rtnCoordCMDDropCollection::execute"
-,   "rtnCoordCMDDropCollectionSpace::execute"
-,   "rtnCoordCMDDropCollectionSpace::getSpaceGroupInfo"
 ,   "rtnCoordCMDQueryBase::queryToCataNodeGroup"
 ,   "rtnCoordCMDQueryBase::execute"
 ,   "rtnCoordCMDListCollectionSpace::buildQueryRequest"
@@ -1917,10 +1990,45 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "_dmsStorageUnit::totalDataSize"
 ,   "_dmsStorageUnit::totalFreePages"
 ,   "_dmsStorageUnit::getStatInfo"
+,   "_dmsLobDirectBuffer::_extendBuf"
+,   "_dmsStorageLobData::open"
+,   "_dmsStorageLobData::_reopen"
+,   "_dmsStorageLobData::close"
+,   "_dmsStorageLobData::write"
+,   "_dmsStorageLobData::read"
+,   "_dmsStorageLobData::readRaw"
+,   "_dmsStorageLobData::extend"
+,   "_dmsStorageLobData::_extend"
+,   "_dmsStorageLobData::remove"
+,   "_dmsStorageLobData::_initFileHeader"
+,   "_dmsStorageLobData::_validateFile"
+,   "_dmsStorageLobData::_getFileHeader"
 ,   "dmsStorageLoadOp::_allocateExtent"
 ,   "dmsStorageLoadOp::pushToTempDataBlock"
 ,   "dmsStorageLoadOp::loadBuildPhase"
 ,   "dmsStorageLoadOp::loadRollbackPhase"
+,   "_dmsStorageLob::open"
+,   "_dmsStorageLob::_delayOpen"
+,   "_dmsStorageLob::_openLob"
+,   "_dmsStorageLob::removeStorageFiles"
+,   "_dmsStorageLob::getLobMeta"
+,   "_dmsStorageLob::writeLobMeta"
+,   "_dmsStorageLob::write"
+,   "_dmsStorageLob::update"
+,   "_dmsStorageLob::read"
+,   "_dmsStorageLob::_allocatePage"
+,   "_dmsStorageLob::_fillPage"
+,   "_dmsStorageLob::remove"
+,   "_dmsStorageLob::_find"
+,   "_dmsStorageLob::_push2Bucket"
+,   "_dmsStorageLob::_onCreate"
+,   "_dmsStorageLob::_onMapMeta"
+,   "_dmsStorageLob::_extendSegments"
+,   "_dmsStorageLob::_readPage"
+,   "_dmsStorageLob::_removePage"
+,   "_dmsStorageLob::truncate"
+,   "_dmsLobDirectInBuffer::getAlignedTuple"
+,   "_dmsLobDirectInBuffer::copy2UsrBuf"
 ,   "_dmsSegmentSpace::_resetMax"
 ,   "_dmsSegmentSpace::reservePages"
 ,   "_dmsSegmentSpace::releasePages"
@@ -1992,6 +2100,7 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "_dmsStorageData::updateRecord"
 ,   "_dmsStorageData::_extentUpdatedRecord"
 ,   "_dmsStorageData::fetch"
+,   "_dmsLobDirectOutBuffer::getAlignedTuple"
 ,   "_qgmBuilder::buildOrderby"
 ,   "_qgmBuilder::build"
 ,   "_qgmBuilder::build2"
@@ -2145,10 +2254,10 @@ static const CHAR *_pTraceFunctionList[] = {
 ,   "_qgmMatcher::match"
 ,   "_qgmMatcher::_match"
 } ;
-const UINT32 _pTraceFunctionListNum = 2143 ;
+const UINT32 _pTraceFunctionListNum = 2217 ;
 const UINT32 pdGetTraceFunctionListNum()
 {
-  return 2143;
+  return 2217;
 }
 const CHAR *pdGetTraceFunction ( UINT64 id )
 {

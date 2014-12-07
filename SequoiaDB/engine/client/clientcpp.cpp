@@ -4510,12 +4510,14 @@ namespace sdbclient
       if (  !_connection )
       {
          rc = SDB_NOT_CONNECTED ;
-         goto done;
+         goto error;
       }
       *millis = getCreateTime() ;
    done:
       PD_TRACE_EXITRC ( SDB_CLIENT_GETCREATETIME2, rc );
       return rc ;
+   error:
+      goto done ;
    }
 
    //PD_TRACE_DECLARE_FUNCTION ( SDB_CLIENT_ISCLOSED, "_sdbLobImpl::isClosed" )

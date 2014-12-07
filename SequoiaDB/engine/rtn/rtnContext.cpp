@@ -312,6 +312,7 @@ namespace engine
       _isInPrefetch        = FALSE ;
       _prefetchRet         = SDB_OK ;
       _pPrefWatcher        = NULL ;
+      _pMonAppCB           = NULL ;
    }
 
    _rtnContextBase::~_rtnContextBase()
@@ -334,6 +335,14 @@ namespace engine
 
       SDB_ASSERT( 0 == _waitPrefetchNum.peek(), "Has wait prefetch jobs" ) ;
       SDB_ASSERT( FALSE == _isInPrefetch, "Has prefetch job run" ) ;
+   }
+
+   void _rtnContextBase::enablePrefetch( _pmdEDUCB * cb,
+                                         rtnPrefWatcher *pWatcher )
+   { 
+      _prefetchID = 1 ;
+      _pPrefWatcher = pWatcher ;
+      _pMonAppCB = cb->getMonAppCB() ;
    }
 
    string _rtnContextBase::toString()
@@ -584,11 +593,21 @@ namespace engine
          goto done ;
       }
 
+      if ( _pMonAppCB && cb->getID() != eduID() )
+      {
+         cb->getMonAppCB()->reset() ;
+      }
       rc = _prepareData( cb ) ;
       _prefetchRet = rc ;
       if ( rc && SDB_DMS_EOC != rc )
       {
          PD_LOG( PDWARNING, "Prepare data failed, rc: %d", rc ) ;
+      }
+
+      if ( _pMonAppCB && cb->getID() != eduID() )
+      {
+         *_pMonAppCB += *cb->getMonAppCB() ;
+         cb->getMonAppCB()->reset() ;
       }
 
       if ( SDB_OK == rc && isEmpty() && isOpened() && !eof() &&
@@ -1709,7 +1728,7 @@ namespace engine
 
       mbContext = NULL ;
 
-      dataContext->enablePrefetch ( &_prefWather ) ;
+      dataContext->enablePrefetch ( cb, &_prefWather ) ;
       if ( cb->getMonConfigCB()->timestampON )
       {
          dataContext->getMonCB()->recordStartTimestamp() ;

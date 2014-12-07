@@ -284,15 +284,13 @@ namespace engine
          BOOLEAN  eof () const { return _hitEnd ; }
 
       public:
-         void     enablePrefetch ( rtnPrefWatcher *pWatcher = NULL )
-         { 
-            _prefetchID = 1 ;
-            _pPrefWatcher = pWatcher ;
-         }
+         void     enablePrefetch ( _pmdEDUCB *cb,
+                                   rtnPrefWatcher *pWatcher = NULL ) ;
          void     disablePrefetch ()
-         { 
+         {
             _prefetchID = 0 ;
             _pPrefWatcher = NULL ;
+            _pMonAppCB = NULL ;
          }
          INT32    prefetchResult() const { return _prefetchRet ; }
          INT32    prefetch ( _pmdEDUCB *cb, UINT32 prefetchID ) ;
@@ -342,7 +340,7 @@ namespace engine
          BOOLEAN                 _isInPrefetch ;
          INT32                   _prefetchRet ;
          rtnPrefWatcher          *_pPrefWatcher ;
-
+         _monAppCB               *_pMonAppCB ;
    } ;
    typedef _rtnContextBase rtnContextBase ;
 

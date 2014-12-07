@@ -162,6 +162,8 @@ namespace engine
    */
    _omaCmdBuilder* getOmaCmdBuilder() ;
 
+   class _omaTaskMgr ;
+
    /******************************* scan host ********************************/
    /*
       _omaScanHost
@@ -264,6 +266,23 @@ namespace engine
          INT32                            _transactionID ;
    } ;
 
+   /******************************* add host ********************************/
+   /*
+      _omaAddHost
+   */
+   class _omaAddHost2 : public _omaCommand
+   {
+      public:
+         _omaAddHost2 () ;
+         ~_omaAddHost2 () ;
+         virtual const CHAR * name () { return OMA_CMD_ADD_HOST ; }
+         virtual INT32 init ( const CHAR *pAddHostInfo ) ;
+         virtual INT32 doit ( BSONObj &retObj ) ;
+
+      private:
+         vector<AddHostInfo>        _addHostInfo ;
+   } ;
+
    /******************************* remove host ********************************/
    /*
       _omaRemoveHost
@@ -282,7 +301,6 @@ namespace engine
    /*
       _omaInsDBBus
    */
-   class _omaTaskMgr ;
    class _omaInsDBBus : public _omaCommand
    {
       DECLARE_OACMD_AUTO_REGISTER ()
@@ -412,11 +430,49 @@ namespace engine
          virtual INT32 init ( const CHAR *pInstallInfo ) ;
    } ;
 
+   class _omaRunAddHost : public _omaCommand
+   {
+      public:
+         _omaRunAddHost ( AddHostInfo &info ) ;
+         ~_omaRunAddHost () ;
+         virtual const CHAR * name () { return OMA_CMD_ADD_HOST ; }
+         virtual INT32 init ( const CHAR *pInstallInfo ) ;
+
+      private:
+         INT32 _getAddHostInfo( BSONObj &retObj ) ;
+         
+      private:
+         AddHostInfo         _addHostInfo ;
+   } ;
+
+   class _omaRunRmHost : public _omaCommand
+   {
+      public:
+         _omaRunRmHost( AddHostInfo &info ) ;
+         ~_omaRunRmHost () ;
+         virtual const CHAR* name () { return OMA_CMD_RM_HOST ; }
+         virtual INT32 init ( const CHAR *pInstallInfo ) ;
+      private:
+         INT32 _getRmHostInfo( BSONObj &retObj ) ;
+         
+      private:
+         AddHostInfo         _RmHostInfo ;
+   } ;
+
+   class _omaRunCheckAddHostInfo : public _omaCommand
+   {
+      public:
+         _omaRunCheckAddHostInfo() ;
+         ~_omaRunCheckAddHostInfo () ;
+         virtual const CHAR* name () { return "" ; }
+         virtual INT32 init ( const CHAR *pInstallInfo ) ;
+   } ;
+
    class _omaRunCreateStandaloneJob : public _omaCommand
    {
       public:
          _omaRunCreateStandaloneJob ( string &vCoordSvcName,
-                                    InstallInfo &info ) ;
+                                      InstallInfo &info ) ;
          virtual ~_omaRunCreateStandaloneJob () ;
 
       public:

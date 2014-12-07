@@ -210,7 +210,7 @@ void displayArg ( po::options_description &desc )
    std::cout << desc << std::endl ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_SDBINSPT_RESVARG, "resolveArgument" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_SDBINSPT_RESVARG, "resolveArgument" )
 INT32 resolveArgument ( po::options_description &desc, INT32 argc, CHAR **argv )
 {
    INT32 rc = SDB_OK ;
@@ -225,18 +225,15 @@ INT32 resolveArgument ( po::options_description &desc, INT32 argc, CHAR **argv )
    }
    catch ( po::unknown_option &e )
    {
-      pdLog ( PDWARNING, __FUNC__, __FILE__, __LINE__,
-            ( ( std::string ) "Unknown argument: " +
+      PD_LOG ( PDWARNING, ( ( std::string ) "Unknown argument: " +
                 e.get_option_name ()).c_str () ) ;
-              std::cerr <<  "Unknown argument: "
-                        << e.get_option_name () << std::endl ;
-              rc = SDB_INVALIDARG ;
+      std::cerr <<  "Unknown argument: " << e.get_option_name () << std::endl ;
+      rc = SDB_INVALIDARG ;
       goto error ;
    }
    catch ( po::invalid_option_value &e )
    {
-      pdLog ( PDWARNING, __FUNC__, __FILE__, __LINE__,
-             ( ( std::string ) "Invalid argument: " +
+      PD_LOG ( PDWARNING, ( ( std::string ) "Invalid argument: " +
                e.get_option_name () ).c_str () ) ;
       std::cerr <<  "Invalid argument: "
                 << e.get_option_name () << std::endl ;
@@ -458,7 +455,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_FLUSHOUTPUT, "flushOutput" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_FLUSHOUTPUT, "flushOutput" )
 void flushOutput ( const CHAR *pBuffer, INT32 size )
 {
    INT32 rc = SDB_OK ;
@@ -506,7 +503,7 @@ error :
 }
 
 #define DUMP_PRINTF_BUFFER_SZ 4095
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPPRINTF, "dumpPrintf" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPPRINTF, "dumpPrintf" )
 void dumpPrintf ( const CHAR *format, ... )
 {
    PD_TRACE_ENTRY ( SDB_DUMPPRINTF );
@@ -521,7 +518,7 @@ void dumpPrintf ( const CHAR *format, ... )
    PD_TRACE_EXIT ( SDB_DUMPPRINTF );
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_REALLOCBUFFER, "reallocBuffer" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_REALLOCBUFFER, "reallocBuffer" )
 INT32 reallocBuffer ()
 {
    INT32 rc = SDB_OK ;
@@ -564,7 +561,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_GETEXTBUFFER, "getExtentBuffer" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_GETEXTBUFFER, "getExtentBuffer" )
 INT32 getExtentBuffer ( INT32 size )
 {
    INT32 rc = SDB_OK ;
@@ -605,7 +602,7 @@ void clearBuffer ()
    gBufferSize = 0 ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_INSPECTHEADER, "inspectHeader" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_INSPECTHEADER, "inspectHeader" )
 void inspectHeader ( OSSFILE &file, SINT32 &pageSize, SINT32 &err )
 {
    INT32 rc       = SDB_OK ;
@@ -665,7 +662,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPHEADER, "dumpHeader" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPHEADER, "dumpHeader" )
 void dumpHeader ( OSSFILE &file, SINT32 &pageSize )
 {
    INT32 rc                            = SDB_OK ;
@@ -708,7 +705,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_INSPECTSME, "inspectSME" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_INSPECTSME, "inspectSME" )
 void inspectSME ( OSSFILE &file, const CHAR *pExpBuf, SINT32 &hwm, SINT32 &err )
 {
    INT32 rc        = SDB_OK ;
@@ -764,7 +761,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPSME, "dumpSME" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPSME, "dumpSME" )
 void dumpSME ( OSSFILE &file )
 {
    INT32 rc = SDB_OK ;
@@ -814,7 +811,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_GETEXTENTHEAD, "getExtentHead" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_GETEXTENTHEAD, "getExtentHead" )
 INT32 getExtentHead ( OSSFILE &file, dmsExtentID extentID, SINT32 pageSize,
                       dmsExtent &extentHead )
 {
@@ -835,7 +832,7 @@ INT32 getExtentHead ( OSSFILE &file, dmsExtentID extentID, SINT32 pageSize,
    return rc ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_GETEXTENT, "getExtent" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_GETEXTENT, "getExtent" )
 INT32 getExtent ( OSSFILE &file, dmsExtentID extentID, SINT32 pageSize,
                   SINT32 extentSize )
 {
@@ -881,7 +878,7 @@ enum INSPECT_EXTENT_TYPE
    INSPECT_EXTENT_TYPE_MBEX,
    INSPECT_EXTENT_TYPE_UNKNOWN
 } ;
-PD_TRACE_DECLARE_FUNCTION ( SDB_EXTENTSANITYCHK, "extentSanityCheck" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_EXTENTSANITYCHK, "extentSanityCheck" )
 BOOLEAN extentSanityCheck ( dmsExtent &extentHead,
                             INSPECT_EXTENT_TYPE &type, // in-out
                             SINT32 pageSize,
@@ -1033,7 +1030,7 @@ retry :
    return result ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_LOADMB, "loadMB" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_LOADMB, "loadMB" )
 INT32 loadMB ( UINT16 collectionID, dmsMB *&mb )
 {
    INT32 rc = SDB_SYS ;
@@ -1052,7 +1049,7 @@ INT32 loadMB ( UINT16 collectionID, dmsMB *&mb )
    return rc ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_LOADEXTENT, "loadExtent" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_LOADEXTENT, "loadExtent" )
 INT32 loadExtent ( OSSFILE &file, INSPECT_EXTENT_TYPE &type,
                    SINT32 pageSize, dmsExtentID extentID,
                    UINT16 collectionID )
@@ -1099,7 +1096,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_INSPOVFLWRECRDS, "inspectOverflowedRecords" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_INSPOVFLWRECRDS, "inspectOverflowedRecords" )
 void inspectOverflowedRecords ( OSSFILE &file, SINT32 pageSize,
                                 UINT16 collectionID, dmsExtentID ovfFromExtent,
                                 std::set<dmsRecordID> &overRIDList,
@@ -1186,7 +1183,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPOVFWRECRDS, "dumpOverflowedRecords" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPOVFWRECRDS, "dumpOverflowedRecords" )
 void dumpOverflowedRecords ( OSSFILE &file, SINT32 pageSize,
                              UINT16 collectionID, dmsExtentID ovfFromExtID,
                              std::set<dmsRecordID> &overRIDList )
@@ -1246,7 +1243,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_INSPINXDEF, "inspectIndexDef" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_INSPINXDEF, "inspectIndexDef" )
 void inspectIndexDef ( OSSFILE &file, SINT32 pageSize, UINT16 collectionID,
                        dmsMB *mb, CHAR *pExpBuffer,
                        std::map<UINT16, dmsExtentID> &indexRoots,
@@ -1335,7 +1332,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPINXDEF, "dumpIndexDef" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPINXDEF, "dumpIndexDef" )
 void dumpIndexDef ( OSSFILE &file, SINT32 pageSize, UINT16 collectionID,
                     dmsMB *mb, std::map<UINT16, dmsExtentID> &indexRoots )
 {
@@ -1404,7 +1401,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_INSPINXEXTS, "inspectIndexExtents" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_INSPINXEXTS, "inspectIndexExtents" )
 void inspectIndexExtents ( OSSFILE &file, SINT32 pageSize,
                            dmsExtentID rootID, UINT16 collectionID,
                            CHAR *pExpBuffer, SINT32 &err )
@@ -1479,7 +1476,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPINXEXTS, "dumpIndexExtents" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPINXEXTS, "dumpIndexExtents" )
 void dumpIndexExtents ( OSSFILE &file, SINT32 pageSize,
                         dmsExtentID rootID, UINT16 collectionID )
 {
@@ -1677,7 +1674,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_INSPCOLL, "inspectCollection" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_INSPCOLL, "inspectCollection" )
 void inspectCollection ( OSSFILE &file, SINT32 pageSize, UINT16 id,
                          SINT32 hwm, CHAR *pExpBuffer, SINT32 &err )
 {
@@ -1833,7 +1830,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPCOLL, "dumpCollection" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPCOLL, "dumpCollection" )
 void dumpCollection ( OSSFILE &file, SINT32 pageSize, UINT16 id )
 {
    if ( SDB_INSPT_DATA == gCurInsptType )
@@ -1846,7 +1843,7 @@ void dumpCollection ( OSSFILE &file, SINT32 pageSize, UINT16 id )
    }
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_INSPCOLLS, "inspectCollections" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_INSPCOLLS, "inspectCollections" )
 void inspectCollections ( OSSFILE &file, SINT32 pageSize,
                           vector<UINT16> &collections,
                           SINT32 hwm, CHAR *pExpBuffer,
@@ -1861,7 +1858,7 @@ void inspectCollections ( OSSFILE &file, SINT32 pageSize,
    PD_TRACE_EXIT ( SDB_INSPCOLLS );
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPCOLLS, "dumpCollections" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPCOLLS, "dumpCollections" )
 void dumpCollections ( OSSFILE &file, SINT32 pageSize,
                        vector<UINT16> &collections )
 {
@@ -1874,7 +1871,7 @@ void dumpCollections ( OSSFILE &file, SINT32 pageSize,
    PD_TRACE_EXIT ( SDB_DUMPCOLLS );
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_INSPCOLLECTIONS, "inspectCollections" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_INSPCOLLECTIONS, "inspectCollections" )
 void inspectCollections ( OSSFILE &file, SINT32 pageSize, SINT32 hwm,
                           CHAR *pExpBuffer, SINT32 &err )
 {
@@ -1938,7 +1935,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPRAWPAGE, "dumpRawPage" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPRAWPAGE, "dumpRawPage" )
 void dumpRawPage ( OSSFILE &file, SINT32 pageSize, SINT32 pageID )
 {
    INT32 rc = SDB_OK ;
@@ -1975,7 +1972,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPCOLLECTIONS, "dumpCollections" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPCOLLECTIONS, "dumpCollections" )
 void dumpCollections ( OSSFILE &file, SINT32 pageSize )
 {
    INT32 rc = SDB_OK ;
@@ -2319,7 +2316,7 @@ void actionCSAttemptEntry( const CHAR *csName, UINT32 sequence,
    }
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPPAGES, "dumpPages" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPPAGES, "dumpPages" )
 void dumpPages ()
 {
    PD_TRACE_ENTRY ( SDB_DUMPPAGES ) ;
@@ -2370,7 +2367,7 @@ error :
    goto done ;
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPDB, "dumpDB" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_DUMPDB, "dumpDB" )
 void dumpDB ()
 {
    PD_TRACE_ENTRY ( SDB_DUMPDB ) ;
@@ -2410,7 +2407,7 @@ void dumpDB ()
    PD_TRACE_EXIT ( SDB_DUMPDB );
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_INSPECTDB, "inspectDB" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_INSPECTDB, "inspectDB" )
 void inspectDB ()
 {
    PD_TRACE_ENTRY ( SDB_INSPECTDB );
@@ -2450,7 +2447,7 @@ void inspectDB ()
    PD_TRACE_EXIT ( SDB_INSPECTDB );
 }
 
-PD_TRACE_DECLARE_FUNCTION ( SDB_SDBINSPT_MAIN, "main" )
+// PD_TRACE_DECLARE_FUNCTION ( SDB_SDBINSPT_MAIN, "main" )
 INT32 main ( INT32 argc, CHAR **argv )
 {
    INT32 rc = SDB_OK ;

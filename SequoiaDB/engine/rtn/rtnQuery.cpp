@@ -378,7 +378,7 @@ namespace engine
       }
       if ( enablePrefetch )
       {
-         dataContext->enablePrefetch () ;
+         dataContext->enablePrefetch ( cb ) ;
       }
 
    done :
@@ -535,7 +535,7 @@ namespace engine
       }
       if ( enablePrefetch )
       {
-         context->enablePrefetch () ;
+         context->enablePrefetch ( cb ) ;
       }
 
    done :

@@ -147,6 +147,8 @@ namespace engine
                   itJob->waitDetach () ;
                   _latch.get() ;
                   _latchRemove.release() ;
+                  it = _mapJobs.begin() ;
+                  continue ;
                }
             }
             ++it ;
