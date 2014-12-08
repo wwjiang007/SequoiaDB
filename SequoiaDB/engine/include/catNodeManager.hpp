@@ -64,6 +64,8 @@ namespace engine
       virtual void   attachCB( _pmdEDUCB *cb ) ;
       virtual void   detachCB( _pmdEDUCB *cb ) ;
 
+      ossEvent*      getChangeEvent() { return &_changeEvent ; }
+
    protected:
       INT32 _onActiveEvent( pmdEDUEvent *event ) ;
       INT32 _onDeactiveEvent( pmdEDUEvent *event ) ;
@@ -148,6 +150,8 @@ namespace engine
       _SDB_RTNCB                 *_pRtnCB;
       sdbCatalogueCB             *_pCatCB;
       pmdEDUCB                   *_pEduCB;
+
+      ossEvent                   _changeEvent ;
 
    } ;
 }

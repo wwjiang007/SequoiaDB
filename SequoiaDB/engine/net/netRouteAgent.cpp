@@ -96,13 +96,18 @@ namespace engine
                                       const _netRouteNode &node )
    {
       INT32 rc = SDB_OK ;
+      BOOLEAN newAdd = FALSE ;
       PD_TRACE_ENTRY ( SDB__NETRTAG_UPRT3 );
-      rc = _route.update( id, node ) ;
+      rc = _route.update( id, node, &newAdd ) ;
       if ( SDB_OK != rc )
       {
          goto error ;
       }
-      _frame.close( id ) ;
+
+      if ( FALSE == newAdd )
+      {
+         _frame.close( id ) ;
+      }
 
    done:
       PD_TRACE_EXITRC ( SDB__NETRTAG_UPRT3, rc );
@@ -127,9 +132,10 @@ namespace engine
       INT32 rc = SDB_OK ;
       PD_TRACE_ENTRY ( SDB__NETRTAG_LSTN );
       _netRouteNode node ;
-      CHAR host[ OSS_MAX_HOSTNAME + 1 ] ;
-      CHAR service[ OSS_MAX_SERVICENAME + 1] ;
-      rc = _route.route( id, host, service ) ;
+      CHAR host[ OSS_MAX_HOSTNAME + 1 ] = { 0 } ;
+      CHAR service[ OSS_MAX_SERVICENAME + 1] = { 0 } ;
+      rc = _route.route( id, host, OSS_MAX_HOSTNAME,
+                         service, OSS_MAX_SERVICENAME ) ;
       if ( SDB_OK != rc )
       {
          PD_LOG( PDERROR, "can not find the route of %d, %d, %d",
@@ -174,9 +180,10 @@ namespace engine
       {
       }
       {
-      CHAR host[ OSS_MAX_HOSTNAME + 1 ] ;
-      CHAR service[ OSS_MAX_SERVICENAME + 1] ;
-      rc = _route.route( id, host, service ) ;
+      CHAR host[ OSS_MAX_HOSTNAME + 1 ] = { 0 } ;
+      CHAR service[ OSS_MAX_SERVICENAME + 1] = { 0 } ;
+      rc = _route.route( id, host, OSS_MAX_HOSTNAME,
+                         service, OSS_MAX_SERVICENAME ) ;
       if ( SDB_OK != rc )
       {
          goto error ;
@@ -238,9 +245,10 @@ namespace engine
       }
       else
       {
-         CHAR host[ OSS_MAX_HOSTNAME + 1 ] ;
-         CHAR service[ OSS_MAX_SERVICENAME + 1] ;
-         rc = _route.route( id, host, service ) ;
+         CHAR host[ OSS_MAX_HOSTNAME + 1 ] = { 0 } ;
+         CHAR service[ OSS_MAX_SERVICENAME + 1] = { 0 } ;
+         rc = _route.route( id, host, OSS_MAX_HOSTNAME,
+                            service, OSS_MAX_SERVICENAME ) ;
          if ( SDB_OK != rc )
          {
             goto error ;
@@ -307,9 +315,10 @@ namespace engine
       }
       else
       {
-         CHAR host[ OSS_MAX_HOSTNAME + 1 ] ;
-         CHAR service[ OSS_MAX_SERVICENAME + 1] ;
-         rc = _route.route( id, host, service ) ;
+         CHAR host[ OSS_MAX_HOSTNAME + 1 ] = { 0 } ;
+         CHAR service[ OSS_MAX_SERVICENAME + 1] = { 0 } ;
+         rc = _route.route( id, host, OSS_MAX_HOSTNAME,
+                            service, OSS_MAX_SERVICENAME ) ;
          if ( SDB_OK != rc )
          {
             goto error ;

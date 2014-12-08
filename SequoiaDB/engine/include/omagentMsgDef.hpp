@@ -117,6 +117,8 @@
 #define OMA_FIELD_CATAADDR                         "CataAddr"
 #define OMA_FIELD_CATASVCNAME                      "CataSvcName"
 #define OMA_FIELD_SSHPORT                          "SshPort"
+#define OMA_FIELD_HASERROR                         "HasError"
+#define OMA_FIELD_HASFINISH                        "HasFinish"
 
 
 #define OMA_FIELD_HOST                             "Host"

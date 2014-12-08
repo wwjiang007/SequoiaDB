@@ -84,7 +84,6 @@ namespace engine
                            INT32 &subVersion,    // out
                            INT32 &release,       // out
                            string &buildInfo ) ;
-
 }
 
 #endif // UTILSTR_HPP_
