@@ -130,7 +130,7 @@ namespace engine
       UINT16 catNID = CATA_NODE_ID_BEGIN + CLS_REPLSET_MAX_NODE_SIZE ;
       MsgRouteID id ;
       pmdOptionsCB *optCB = pmdGetOptionCB() ;
-      const _pmdOptionsMgr::_pmdAddrPair *pCatAddrs = optCB->catAddrs() ;
+      vector< _pmdOptionsMgr::_pmdAddrPair > catAddrs = optCB->catAddrs() ;
 
       _pNetWork = SDB_OSS_NEW _netRouteAgent( &_multiRouteAgent ) ;
       if ( !_pNetWork )
@@ -150,16 +150,16 @@ namespace engine
       }
       _catGroupInfo = CoordGroupInfoPtr( pGroupInfo ) ;
 
-      for ( UINT32 i = 0 ; i < CATA_NODE_MAX_NUM ; ++i )
+      for ( UINT32 i = 0 ; i < catAddrs.size() ; ++i )
       {
-         if ( 0 == pCatAddrs[i]._host[ 0 ] )
+         if ( 0 == catAddrs[i]._host[ 0 ] )
          {
             break ;
          }
          id.columns.groupID = catGID ;
          id.columns.nodeID = catNID++ ;
          id.columns.serviceID = MSG_ROUTE_CAT_SERVICE ;
-         addCatNodeAddr( id, pCatAddrs[i]._host, pCatAddrs[i]._service ) ;
+         addCatNodeAddr( id, catAddrs[i]._host, catAddrs[i]._service ) ;
       }
 
       pmdGetStartup().ok( TRUE ) ;
