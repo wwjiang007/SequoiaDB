@@ -223,7 +223,7 @@ namespace engine
    {
       resetResult () ;
 
-      pEX->setCfgStep( PMD_CFG_STEP_REINIT ) ;
+      pEX->setCfgStep( PMD_CFG_STEP_INIT ) ;
 
 
       rdxString( pEX, SDBCM_CONF_DFTPORT , _dftSvcName,
