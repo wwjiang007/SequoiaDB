@@ -1026,6 +1026,9 @@ namespace engine
       PD_TRACE_ENTRY ( SDB_STARTINXJOB );
       const CHAR *fullname = NULL ;
       BSONObj index ;
+      rtnIndexJob *indexJob = NULL ;
+      clsCatalogSet *pCatSet = NULL ;
+      BOOLEAN useSync = FALSE ;
 
       if ( LOG_TYPE_IX_CRT != recordHeader->_type &&
            LOG_TYPE_IX_DELETE != recordHeader->_type )
@@ -1054,9 +1057,14 @@ namespace engine
          }
       }
 
+      sdbGetShardCB()->getAndLockCataSet( fullname, &pCatSet, TRUE ) ;
+      if ( pCatSet && CLS_REPLSET_MAX_NODE_SIZE == pCatSet->getW() )
       {
-      rtnIndexJob *indexJob = SDB_OSS_NEW rtnIndexJob(type, fullname,
-                                                      index, dpsCB ) ;
+         useSync = TRUE ;
+      }
+      sdbGetShardCB()->unlockCataSet( pCatSet ) ;
+
+      indexJob = SDB_OSS_NEW rtnIndexJob( type, fullname, index, dpsCB ) ;
       if ( NULL == indexJob )
       {
          PD_LOG ( PDERROR, "Failed to alloc memory for indexJob" ) ;
@@ -1072,13 +1080,23 @@ namespace engine
          goto error ;
       }
 
-      /*rc = rtnGetJobMgr()->startJob( indexJob, RTN_JOB_MUTEX_STOP_RET, NULL ) ;
-      if ( SDB_RTN_MUTEX_JOB_EXIST == rc )
+      if ( FALSE == useSync )
       {
-         rc = SDB_OK ;
-      }*/
-      rc = rtnGetJobMgr()->startJob( indexJob, RTN_JOB_MUTEX_STOP_CONT, NULL ) ;
+         /*rc = rtnGetJobMgr()->startJob( indexJob, RTN_JOB_MUTEX_STOP_RET, NULL ) ;
+         if ( SDB_RTN_MUTEX_JOB_EXIST == rc )
+         {
+            rc = SDB_OK ;
+         }*/
+         rc = rtnGetJobMgr()->startJob( indexJob, RTN_JOB_MUTEX_STOP_CONT, NULL ) ;
       }
+      else
+      {
+         pmdEDUCB *cb = pmdGetThreadEDUCB() ;
+         indexJob->doit() ;
+         SDB_OSS_DEL indexJob ;
+         indexJob = NULL ;
+      }
+
    done:
       PD_TRACE_EXITRC ( SDB_STARTINXJOB, rc );
       return rc ;
