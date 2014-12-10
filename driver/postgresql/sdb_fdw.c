@@ -753,7 +753,7 @@ int sdbSetBsonValue( sdbbson *bsonObj, const char *name, Datum valueDatum,
 			CHAR *buff = VARDATA( ( bytea * )DatumGetPointer( valueDatum ) );
 			INT32 len  = VARSIZE( ( bytea * )DatumGetPointer( valueDatum ) ) 
 			             - VARHDRSZ;
-         sdbbson_append_binary( bsonObj, name, BSON_BINDATA, buff, len ) ;
+         sdbbson_append_binary( bsonObj, name, BSON_BIN_BINARY, buff, len ) ;
          break ;
       }
 
@@ -853,7 +853,7 @@ void sdbGetColumnKeyInfo( SdbExecState *fdw_state )
    {
       sdbbson_destroy( &condition ) ;
       ereport( ERROR, ( errcode( ERRCODE_FDW_ERROR ), 
-            errmsg( "sdbbson_finish failed:rc=%d", rc ) ) ) ;
+               errmsg( "sdbbson_finish failed:rc=%d", rc ) ) ) ;
       return ;
    }
 
