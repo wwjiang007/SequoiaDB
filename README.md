@@ -82,7 +82,7 @@ Building Prerequisites:
 		gcc ( 4.3.4 )
 		make ( 3.81 )
 		kernel ( 3.0.13-0.27-default )
-        Linux PPC64:
+	Linux PPC64:
                 g++ ( 4.3.4 )
                 gcc ( 4.3.4 )
                 make ( 3.81 )
