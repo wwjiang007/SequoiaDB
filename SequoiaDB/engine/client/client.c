@@ -480,10 +480,13 @@ static INT32 _recvExtractEval ( sdbConnectionHandle cHandle, SOCKET sock,
                                 BOOLEAN endianConvert )
 {
    INT32 rc          = SDB_OK ;
+   INT32 tmpRc       = SDB_OK ;
    INT32 replyFlag   = -1 ;
    INT32 startFrom   = -1 ;
    CHAR **ppBuffer   = (CHAR**)msg ;
    MsgOpReply *replyHeader = NULL ;
+   bson localObj ;
+   bson_init( &localObj ) ;
 
    rc = _recv ( cHandle, sock, msg, size, endianConvert ) ;
    if ( SDB_OK != rc )
@@ -505,7 +508,19 @@ static INT32 _recvExtractEval ( sdbConnectionHandle cHandle, SOCKET sock,
       replyHeader = (MsgOpReply *)(*ppBuffer) ;
       if ( errmsg && sizeof( MsgOpReply ) != replyHeader->header.messageLength )
       {
-         bson_init_finished_data( errmsg, *ppBuffer + sizeof(MsgOpReply) ) ;
+         tmpRc = bson_init_finished_data( &localObj, *ppBuffer + sizeof(MsgOpReply) ) ;
+         if ( SDB_OK != tmpRc )
+         {
+            rc = SDB_CORRUPTED_RECORD ;
+            goto error ;
+         }
+         // copy to output result
+         tmpRc = bson_copy( errmsg, &localObj ) ;
+         if ( SDB_OK != tmpRc )
+         {
+            rc = SDB_SYS ;
+            goto error ;
+         }
       }
    }
    else
@@ -513,6 +528,7 @@ static INT32 _recvExtractEval ( sdbConnectionHandle cHandle, SOCKET sock,
       *result = TRUE ;
    }
 done :
+   bson_destroy( &localObj ) ;
    return rc ;
 error :
    goto done ;
