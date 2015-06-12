@@ -917,8 +917,6 @@ void sdbGetColumnKeyInfo( SdbExecState *fdw_state )
    sdbbson_destroy( &condition ) ;
    sdbbson_destroy( &selector ) ;
    sdbbson_destroy( &ShardingKey ) ;
-   
-   sdbCloseCursor( cursor ) ;
 }
 
 bool sdbIsShardingKeyChanged( SdbExecState *fdw_state, sdbbson *oldBson, 

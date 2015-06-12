@@ -480,13 +480,10 @@ static INT32 _recvExtractEval ( sdbConnectionHandle cHandle, SOCKET sock,
                                 BOOLEAN endianConvert )
 {
    INT32 rc          = SDB_OK ;
-   INT32 tmpRc       = SDB_OK ;
    INT32 replyFlag   = -1 ;
    INT32 startFrom   = -1 ;
    CHAR **ppBuffer   = (CHAR**)msg ;
    MsgOpReply *replyHeader = NULL ;
-   bson localObj ;
-   bson_init( &localObj ) ;
 
    rc = _recv ( cHandle, sock, msg, size, endianConvert ) ;
    if ( SDB_OK != rc )
@@ -508,19 +505,7 @@ static INT32 _recvExtractEval ( sdbConnectionHandle cHandle, SOCKET sock,
       replyHeader = (MsgOpReply *)(*ppBuffer) ;
       if ( errmsg && sizeof( MsgOpReply ) != replyHeader->header.messageLength )
       {
-         tmpRc = bson_init_finished_data( &localObj, *ppBuffer + sizeof(MsgOpReply) ) ;
-         if ( SDB_OK != tmpRc )
-         {
-            rc = SDB_CORRUPTED_RECORD ;
-            goto error ;
-         }
-         // copy to output result
-         tmpRc = bson_copy( errmsg, &localObj ) ;
-         if ( SDB_OK != tmpRc )
-         {
-            rc = SDB_SYS ;
-            goto error ;
-         }
+         bson_init_finished_data( errmsg, *ppBuffer + sizeof(MsgOpReply) ) ;
       }
    }
    else
@@ -528,7 +513,6 @@ static INT32 _recvExtractEval ( sdbConnectionHandle cHandle, SOCKET sock,
       *result = TRUE ;
    }
 done :
-   bson_destroy( &localObj ) ;
    return rc ;
 error :
    goto done ;
@@ -7701,6 +7685,70 @@ done:
    return rc ;
 error:
    SET_INVALID_HANDLE( cursor ) ;
+   goto done ;
+}
+
+SDB_EXPORT INT32 sdbReelect( sdbReplicaGroupHandle cHandle,
+                             const bson *options )
+{
+   INT32 rc = SDB_OK ;
+   sdbRGStruct *rg = (sdbRGStruct*)cHandle ;
+   BOOLEAN result = FALSE ;
+   SINT64 contextID = -1 ;
+   bson ops ;
+   bson_iterator itr ;
+   bson_init( &ops ) ;
+   HANDLE_CHECK( cHandle, rg, SDB_HANDLE_TYPE_REPLICAGROUP ) ;
+
+   bson_append_string( &ops,
+                       FIELD_NAME_GROUPNAME,
+                       rg->_replicaGroupName ) ;
+
+   if ( NULL != options )
+   {
+      bson_iterator_init( &itr, options ) ;
+      while ( BSON_EOO != bson_iterator_next ( &itr ) )
+      {
+         bson_append_element( &ops, NULL, &itr ) ;
+      }
+   }
+
+   bson_finish( &ops ) ;
+
+   rc = clientBuildQueryMsg( &(rg->_pSendBuffer),
+                             &(rg->_sendBufferSize),
+                             (CMD_ADMIN_PREFIX CMD_NAME_REELECT),
+                             0, 0, 0, -1, &ops, NULL, NULL, NULL,
+                             rg->_endianConvert ) ;
+   if ( SDB_OK != rc )
+   {
+      ossPrintf ( "Failed to build flush msg, rc = %d"OSS_NEWLINE, rc ) ;
+      goto error ;
+   }
+
+   rc = _send ( rg->_connection, rg->_sock,
+                (MsgHeader*)(rg->_pSendBuffer),
+                rg->_endianConvert ) ;
+   if ( SDB_OK != rc )
+   {
+      goto error ;
+   }
+
+   rc = _recvExtract ( rg->_connection, rg->_sock,
+                       (MsgHeader**)&rg->_pReceiveBuffer,
+                       &rg->_receiveBufferSize, &contextID,
+                       &result, rg->_endianConvert ) ;
+   if ( SDB_OK != rc )
+   {
+      goto error ;
+   }
+
+   CHECK_RET_MSGHEADER( rg->_pSendBuffer, rg->_pReceiveBuffer,
+                        rg->_connection ) ;
+done:
+   bson_destroy( &ops ) ;
+   return rc ;
+error:
    goto done ;
 }
 
