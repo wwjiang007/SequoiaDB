@@ -77,14 +77,6 @@
       Build time
 */
 
-#ifdef _DEBUG
-   #define SDB_ENGINE_BUILD_TIME SDB_ENGINE_BUILD_CURRENT"(Debug)"
-#else
-   #define SDB_ENGINE_BUILD_TIME SDB_ENGINE_BUILD_CURRENT
-#endif
-   
-
-
 /*
  *    Get the version, subversion and release version.
  */
