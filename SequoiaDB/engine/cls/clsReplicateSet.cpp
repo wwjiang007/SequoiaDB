@@ -97,7 +97,7 @@ namespace engine
 
       _totalLogSize = 0 ;
       _inSyncCtrl   = FALSE ;
-      _checkBreakTime = 0 ;
+      _lastTimerTick = 0 ;
       memset( _sizethreshold, 0, sizeof( _sizethreshold ) ) ;
       memset( _timeThreshold, 0, sizeof( _timeThreshold ) ) ;
    }
@@ -452,11 +452,26 @@ namespace engine
       PD_TRACE_ENTRY ( SDB__CLSREPSET_ONTMR );
       if ( _timerID == timerID )
       {
+         UINT64 timeSpan = pmdGetTickSpanTime( _lastTimerTick ) ;
+         if ( timeSpan < interval / 2 )
+         {
+            goto done ;
+         }
+         else if ( 0 != _lastTimerTick && timeSpan > 3 * interval )
+         {
+            PD_LOG( PDWARNING, "The %u milli-seconds's timer has %u "
+                    "milli-seconds not called, the cluster's main thread "
+                    "maybe blocked in some operations", interval,
+                    timeSpan ) ;
+         }
+         _lastTimerTick = pmdGetDBTick() ;
+
          _cata.handleTimeout( interval ) ;
          if ( !_active )
          {
             goto done ;
          }
+
          _beatTime += interval ;
          if ( CLS_SHARING_BETA_INTERVAL <= _beatTime )
          {
@@ -708,19 +723,9 @@ namespace engine
    {
       PD_TRACE_ENTRY ( SDB__CLSREPSET__CHKBRK );
 
-      UINT64 nowTime = time( NULL ) ;
       BOOLEAN needErase = FALSE ;
       map<UINT64, _clsSharingStatus *>::iterator itr ;
       map< UINT64, _clsSharingStatus>::iterator itrInfo ;
-
-      if ( ( nowTime >= _checkBreakTime &&
-             ( nowTime - _checkBreakTime ) * OSS_ONE_SEC < millisec ) ||
-           ( nowTime <= _checkBreakTime &&
-             ( _checkBreakTime - nowTime ) * OSS_ONE_SEC < millisec ) )
-      {
-         goto done ;
-      }
-      _checkBreakTime = nowTime ;
 
       for ( itr = _info.alives.begin() ; itr != _info.alives.end() ; itr++ )
       {
@@ -872,6 +877,31 @@ namespace engine
    {
       SDB_ASSERT( NULL != msg, "msg should not be NULL" ) ;
       return _alive( msg->identity ) ;
+   }
+
+   INT32 _clsReplicateSet::aliveNode( const MsgRouteID &id )
+   {
+      INT32 rc = SDB_OK ;
+
+      rc = _info.mtx.lock_r( 100 ) ;
+
+      if ( SDB_OK == rc )
+      {
+         map<UINT64, _clsSharingStatus*>::iterator itr =
+            _info.alives.find( id.value ) ;
+         if ( itr != _info.alives.end() )
+         {
+            itr->second->timeout = 0 ;
+            itr->second->breakTime = 0 ;
+            itr->second->deadtime = 0 ;
+         }
+         else
+         {
+            rc = SDB_CLS_NODE_BSFAULT ;
+         }
+         _info.mtx.release_r() ;
+      }
+      return rc ;
    }
 
    // PD_TRACE_DECLARE_FUNCTION (SDB__CLSREPSET__ALIVE, "_clsReplicateSet::_alive" )

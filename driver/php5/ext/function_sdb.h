@@ -147,11 +147,12 @@ INT32 splitData2 ( sdbCollection *collection,
 
 INT32 collectionRename ( sdbCollection *collection, CHAR *pName ) ;
 
-INT32 createIndex ( sdbCollection *collection,
-                    const CHAR *indexDef,
-                    const CHAR *pName,
-                    BOOLEAN isUnique,
-                    BOOLEAN isEnforced ) ;
+INT32 createIndex( sdbCollection *collection,
+                   const CHAR *indexDef,
+                   const CHAR *pName,
+                   BOOLEAN isUnique,
+                   BOOLEAN isEnforced,
+                   INT32 sortBufferSize ) ;
 
 INT32 getIndex ( sdbCollection *collection,
                  sdbCursor **query,

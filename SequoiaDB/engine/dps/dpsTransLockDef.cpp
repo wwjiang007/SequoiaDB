@@ -38,6 +38,7 @@
 #include "dms.hpp"
 #include "dmsStorageUnit.hpp"
 
+using namespace bson ;
 namespace engine
 {
    dpsTransLockId::dpsTransLockId( UINT32 logicCSID,
@@ -92,7 +93,44 @@ namespace engine
       {
          return TRUE;
       }
+      else if ( _recordExtentID > rhs._recordExtentID )
+      {
+         return FALSE;
+      }
+      if ( _recordOffset < rhs._recordOffset )
+      {
+         return TRUE;
+      }
       return FALSE;
+   }
+   BOOLEAN dpsTransLockId::operator==( const dpsTransLockId &rhs ) const
+   {
+      if ( _logicCSID == rhs._logicCSID
+           && _collectionID == rhs._collectionID
+           && _recordExtentID == rhs._recordExtentID
+           && _recordOffset == rhs._recordOffset )
+      {
+         return TRUE ;
+      }
+      return FALSE ;
+   }
+
+   void dpsTransLockId::reset()
+   {
+      _logicCSID = ~0 ;
+      _collectionID = DMS_INVALID_MBID ;
+      _recordExtentID = DMS_INVALID_EXTENT ;
+      _recordOffset = DMS_INVALID_OFFSET ;
+   }
+
+   dpsTransLockId & dpsTransLockId::operator=( const dpsTransLockId & rhs )
+   {
+      _logicCSID        = rhs._logicCSID ;
+      _collectionID     = rhs._collectionID ;
+      _recordExtentID   = rhs._recordExtentID ;
+      _recordOffset     = rhs._recordOffset ;
+
+      return *this ;
    }
 
    std::string dpsTransLockId::toString() const
@@ -103,6 +141,14 @@ namespace engine
                   _logicCSID, _collectionID, _recordExtentID, _recordOffset );
       std::string strInfo( szBuffer );
       return strInfo;
+   }
+
+   BSONObj dpsTransLockId::toBson() const
+   {
+      return BSON( "CSID" << _logicCSID
+                   << "CLID" << _collectionID
+                   << "recordID" << _recordExtentID
+                   << "recordOffset" << _recordOffset ) ;
    }
 
    dpsTransCBLockInfo::dpsTransCBLockInfo( DPS_TRANSLOCK_TYPE lockType )

@@ -231,8 +231,13 @@ SDB_EXPORT void bson_oid_gen( bson_oid_t *oid ) {
     }
     if( oid_inc_func )
         i = oid_inc_func();
+#if defined(_WIN32)
     else
-        i = incr++;
+        i = InterlockedIncrement((volatile long*)&incr)-1;
+#elif defined (__linux__)
+    else
+        i = __sync_fetch_and_add(&incr, 1);
+#endif
     memset ( oid, 0, sizeof(bson_oid_t) ) ;
     {
        unsigned char *source = (unsigned char *)&t ;
@@ -440,23 +445,26 @@ SDB_EXPORT int bson_sprint_iterator ( char **pbuf, int *left, bson_iterator *i,
          bson_sprint_raw_concat ( pbuf, left, "{ \"$binary\": \"" ) ;
          CHECK_LEFT ( left )
          bin_size = bson_iterator_bin_len ( i ) ;
-         base64_size = getEnBase64Size( bin_size ) ;
-         pBase64Buf = (char *)malloc( base64_size + 1 ) ;
-         if ( !pBase64Buf )
+         if( bin_size > 0 )
          {
-            return 0 ;
-         }
-         memset( pBase64Buf, 0, base64_size + 1 ) ;
-         pBin_data = (char *)bson_iterator_bin_data ( i ) ;
-         if ( !base64Encode( pBin_data, bin_size, pBase64Buf, base64_size ) )
-         {
+            base64_size = getEnBase64Size( bin_size ) ;
+            pBase64Buf = (char *)malloc( base64_size + 1 ) ;
+            if ( !pBase64Buf )
+            {
+               return 0 ;
+            }
+            memset( pBase64Buf, 0, base64_size + 1 ) ;
+            pBin_data = (char *)bson_iterator_bin_data ( i ) ;
+            if ( base64Encode( pBin_data, bin_size, pBase64Buf, base64_size ) < 0 )
+            {
+               free( pBase64Buf ) ;
+               pBase64Buf = NULL ;
+               return 0 ;
+            }
+            bson_sprint_raw_concat ( pbuf, left, pBase64Buf ) ;
             free( pBase64Buf ) ;
-            pBase64Buf = NULL ;
-            return 0 ;
+            CHECK_LEFT ( left )
          }
-         bson_sprint_raw_concat ( pbuf, left, pBase64Buf ) ;
-         free( pBase64Buf ) ;
-         CHECK_LEFT ( left )
          bson_sprint_raw_concat ( pbuf, left, temp ) ;
          CHECK_LEFT ( left )
          break;
@@ -572,7 +580,7 @@ SDB_EXPORT int bson_sprint_iterator ( char **pbuf, int *left, bson_iterator *i,
 }
 SDB_EXPORT int bson_sprint_raw ( char **pbuf, int *left, const char *data, int isobj )
 {
-	  bson_iterator i;
+    bson_iterator i;
     const char *key;
     int first = 1 ;
     if ( left <= 0 || !pbuf || !data )
@@ -757,7 +765,7 @@ SDB_EXPORT int bson_sprint_length( const bson *b ) {
 
 SDB_EXPORT void bson_print( const bson *b )
 {
-	 char *p = NULL ;
+   char *p = NULL ;
    int bufferSize = bson_sprint_length ( b ) ;
    p = (char*)malloc(bufferSize) ;
    if ( !p )

@@ -65,6 +65,8 @@ namespace engine
       virtual string toString() const ;
       virtual INT32 handleHints( QGM_HINS &hints ) ;
 
+      BSONObj getHint() const ;
+
    protected:
       virtual INT32 _extend( _qgmOptiTreeNode *&exNode ) ;
       virtual UINT32 _getFieldAlias( qgmOPFieldPtrVec &fieldAlias,
@@ -88,6 +90,8 @@ namespace engine
                                    BOOLEAN &found,
                                    qgmOpField *&selector ) ;
 
+      void _handleHint( QGM_HINS &hints ) ;
+
    public:
       qgmOPFieldVec        _selector ;
       qgmOPFieldVec        _orderby ;
@@ -97,7 +101,6 @@ namespace engine
       qgmConditionNode     *_condition ;
       INT64 _limit ;
       INT64 _skip ;
-      qgmField _hint ;
       BOOLEAN _hasFunc ;
       _qgmOptiTreeNode *_from ;
    } ;

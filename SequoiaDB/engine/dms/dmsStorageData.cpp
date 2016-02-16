@@ -1287,7 +1287,7 @@ namespace engine
          PD_RC_CHECK( rc, PDERROR, "Check sync control failed, rc: %d", rc ) ;
 
          logRecSize = record.alignedLen() ;
-         rc = pTransCB->reservedLogSpace( logRecSize ) ;
+         rc = pTransCB->reservedLogSpace( logRecSize, cb ) ;
          if( rc )
          {
             PD_LOG( PDERROR, "Failed to reserved log space(length=%u)",
@@ -1389,7 +1389,7 @@ namespace engine
       {
          rc = _allocateExtent( context, initPages, TRUE, FALSE, NULL ) ;
          PD_RC_CHECK( rc, PDERROR, "Allocate new %u pages of collection[%s] "
-                      "failed, rc: %d", pName, rc ) ;
+                      "failed, rc: %d", initPages, pName, rc ) ;
       }
 
       if ( !noIDIndex &&
@@ -1407,7 +1407,7 @@ namespace engine
       }
       if ( 0 != logRecSize )
       {
-         pTransCB->releaseLogSpace( logRecSize );
+         pTransCB->releaseLogSpace( logRecSize, cb );
       }
       PD_TRACE_EXITRC ( SDB__DMSSTORAGEDATA_ADDCOLLECTION, rc ) ;
       return rc ;
@@ -1468,7 +1468,7 @@ namespace engine
          PD_RC_CHECK( rc, PDERROR, "Check sync control failed, rc: %d", rc ) ;
 
          logRecSize = record.alignedLen() ;
-         rc = pTransCB->reservedLogSpace( logRecSize ) ;
+         rc = pTransCB->reservedLogSpace( logRecSize, cb ) ;
          if( rc )
          {
             PD_LOG( PDERROR, "Failed to reserved log space(length=%u)",
@@ -1565,7 +1565,7 @@ namespace engine
       }
       if ( 0 != logRecSize )
       {
-         pTransCB->releaseLogSpace( logRecSize );
+         pTransCB->releaseLogSpace( logRecSize, cb );
       }
       PD_TRACE_EXITRC ( SDB__DMSSTORAGEDATA_DROPCOLLECTION, rc ) ;
       return rc ;
@@ -1611,7 +1611,7 @@ namespace engine
          PD_RC_CHECK( rc, PDERROR, "Check sync control failed, rc: %d", rc ) ;
 
          logRecSize = record.alignedLen() ;
-         rc = pTransCB->reservedLogSpace( logRecSize ) ;
+         rc = pTransCB->reservedLogSpace( logRecSize, cb ) ;
          if( rc )
          {
             PD_LOG( PDERROR, "Failed to reserved log space(length=%u)",
@@ -1703,7 +1703,7 @@ namespace engine
       }
       if ( 0 != logRecSize )
       {
-         pTransCB->releaseLogSpace( logRecSize ) ;
+         pTransCB->releaseLogSpace( logRecSize, cb ) ;
       }
       PD_TRACE_EXITRC ( SDB__DMSSTORAGEDATA_TRUNCATECOLLECTION, rc ) ;
       return rc ;
@@ -1780,7 +1780,7 @@ namespace engine
          PD_RC_CHECK( rc, PDERROR, "Check sync control failed, rc: %d", rc ) ;
 
          logRecSize = record.alignedLen() ;
-         rc = pTransCB->reservedLogSpace( logRecSize );
+         rc = pTransCB->reservedLogSpace( logRecSize, cb );
          if( rc )
          {
             PD_LOG( PDERROR, "Failed to reserved log space(length=%u)",
@@ -1830,7 +1830,7 @@ namespace engine
       }
       if ( 0 != logRecSize )
       {
-         pTransCB->releaseLogSpace( logRecSize );
+         pTransCB->releaseLogSpace( logRecSize, cb );
       }
       PD_TRACE_EXITRC ( SDB__DMSSTORAGEDATA_RENAMECOLLECTION, rc ) ;
       return rc ;
@@ -1970,7 +1970,7 @@ namespace engine
             goto error ;
          }
 
-         rc = pTransCB->reservedLogSpace( logRecSize ) ;
+         rc = pTransCB->reservedLogSpace( logRecSize, cb ) ;
          if ( rc )
          {
             PD_LOG( PDERROR, "Failed to reserved log space(length=%u)",
@@ -2069,7 +2069,7 @@ namespace engine
       }
       if ( 0 != logRecSize )
       {
-         pTransCB->releaseLogSpace( logRecSize ) ;
+         pTransCB->releaseLogSpace( logRecSize, cb ) ;
       }
       PD_TRACE_EXITRC ( SDB__DMSSTORAGEDATA_INSERTRECORD, rc ) ;
       return rc ;
@@ -2308,7 +2308,7 @@ namespace engine
                             rc ) ;
 
                logRecSize = record.alignedLen() ;
-               rc = pTransCB->reservedLogSpace( logRecSize ) ;
+               rc = pTransCB->reservedLogSpace( logRecSize, cb ) ;
                if ( rc )
                {
                   PD_LOG( PDERROR, "Failed to reserved log space(length=%u)",
@@ -2376,7 +2376,7 @@ namespace engine
    done :
       if ( 0 != logRecSize )
       {
-         pTransCB->releaseLogSpace( logRecSize ) ;
+         pTransCB->releaseLogSpace( logRecSize, cb ) ;
       }
       PD_TRACE_EXITRC ( SDB__DMSSTORAGEDATA_DELETERECORD, rc ) ;
       return rc ;
@@ -2570,7 +2570,7 @@ namespace engine
                          rc ) ;
 
             logRecSize = record.alignedLen() ;
-            rc = pTransCB->reservedLogSpace( logRecSize );
+            rc = pTransCB->reservedLogSpace( logRecSize, cb );
             if ( rc )
             {
                PD_LOG( PDERROR, "Failed to reserved log space(len:%u), rc: %d",
@@ -2625,7 +2625,7 @@ namespace engine
    done :
       if ( 0 != logRecSize )
       {
-         pTransCB->releaseLogSpace( logRecSize );
+         pTransCB->releaseLogSpace( logRecSize, cb );
       }
       PD_TRACE_EXITRC ( SDB__DMSSTORAGEDATA_UPDATERECORD, rc ) ;
       return rc ;

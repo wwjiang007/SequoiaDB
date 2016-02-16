@@ -324,7 +324,10 @@ namespace engine
          _replyHeader.startFrom = (INT32)contextBuff.getStartFrom() ;
          if ( SDB_OK != rc )
          {
-            if ( _needRollback )
+            if ( _needRollback
+                 && rc != SDB_CLS_COORD_NODE_CAT_VER_OLD
+                 && rc != SDB_CLS_NO_CATALOG_INFO
+                 && rc != SDB_CAT_NO_MATCH_CATALOG )
             {
                INT32 rcTmp = rtnTransRollback( eduCB(), getDPSCB() ) ;
                if ( rcTmp )

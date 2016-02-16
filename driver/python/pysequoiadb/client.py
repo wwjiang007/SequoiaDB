@@ -698,10 +698,11 @@ class client(object):
                       262144  :  256k
                       524288  :  512k
       """
+      ops = {}
       if not isinstance(cs_name, basestring):
          raise SDBTypeError("name of collection space must be an instance of basestring")
       if isinstance(options, int):
-         if page_size not in [0, 4096, 8192, 16384, 32768, 65536]:
+         if options not in [0, 4096, 8192, 16384, 32768, 65536]:
             raise SDBTypeError("page size is invalid")
          ops["PageSize"] = options
       elif isinstance(options, dict):
@@ -1434,24 +1435,3 @@ class client(object):
       except SDBBaseError:
          valid = False
          raise
-
-      return valid
-
-   def get_datacenter(self):
-      """get data center
-
-      Return values:
-         an object of data center 
-      Exceptions:
-         pysequoiadb.error.SDBBaseError
-      """
-      try:
-         dc = datacenter()
-         rc = sdb.sdb_get_datacenter(self._client, cs._dc)
-         pysequoiadb._raise_if_error("Failed to get data center", rc)
-      except SDBBaseError:
-         del dc;
-         dc = None
-         raise
-
-      return dc

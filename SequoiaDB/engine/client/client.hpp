@@ -287,6 +287,11 @@ namespace sdbclient
                                   BOOLEAN isUnique,
                                   BOOLEAN isEnforced
                                 ) = 0 ;
+      virtual INT32 createIndex ( const bson::BSONObj &indexDef,
+                                  const CHAR *pName,
+                                  BOOLEAN isUnique,
+                                  BOOLEAN isEnforced,
+                                  INT32 sortBufferSize ) = 0 ;
       virtual INT32 getIndexes ( _sdbCursor **cursor,
                                  const CHAR *pName ) = 0 ;
       virtual INT32 getIndexes ( sdbCursor &cursor,
@@ -750,9 +755,10 @@ namespace sdbclient
       }*/
 
 /** \fn INT32 createIndex ( const bson::BSONObj &indexDef,
-                          const CHAR *pName,
-                          BOOLEAN isUnique
-                        )
+                            const CHAR *pName,
+                            BOOLEAN isUnique,
+                            BOOLEAN isEnforced
+                          )
     \brief Create the index in current collection
     \param [in] indexDef The bson structure of index element, e.g. {name:1, age:-1}
     \param [in] pIndexName The index name
@@ -772,6 +778,34 @@ namespace sdbclient
             return SDB_NOT_CONNECTED ;
          return pCollection->createIndex ( indexDef, pName, isUnique,
                                            isEnforced ) ;
+      }
+
+/** \fn INT32 createIndex ( const bson::BSONObj &indexDef,
+                            const CHAR *pName,
+                            BOOLEAN isUnique,
+                            BOOLEAN isEnforced,
+                            INT32 sortBufferSize )
+    \brief Create the index in current collection
+    \param [in] indexDef The bson structure of index element, e.g. {name:1, age:-1}
+    \param [in] pIndexName The index name
+    \param [in] isUnique Whether the index elements are unique or not
+    \param [in] isEnforced Whether the index is enforced unique
+                           This element is meaningful when isUnique is set to true
+    \param [in] sortBufferSize The size of sort buffer used when creating index, the unit is MB,
+                               zero means don't use sort buffer
+    \retval SDB_OK Operation Success
+    \retval Others Operation Fail
+*/
+      INT32 createIndex ( const bson::BSONObj &indexDef,
+                          const CHAR *pName,
+                          BOOLEAN isUnique,
+                          BOOLEAN isEnforced,
+                          INT32 sortBufferSize )
+      {
+         if ( !pCollection )
+            return SDB_NOT_CONNECTED ;
+         return pCollection->createIndex ( indexDef, pName, isUnique,
+                                           isEnforced, sortBufferSize ) ;
       }
 
 /* \fn INT32 getIndexes ( _sdbCursor **cursor,

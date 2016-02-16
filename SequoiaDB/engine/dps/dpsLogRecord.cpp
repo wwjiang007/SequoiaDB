@@ -132,37 +132,47 @@ namespace engine
       return ;
    }
 
-   // PD_TRACE_DECLARE_FUNCTION ( SDB__DPSLGRECD_LOAD, "_dpsLogRecord::load" )
-   INT32 _dpsLogRecord::load( const CHAR *pData )
+   // PD_TRACE_DECLARE_FUNCTION ( SDB__DPSLGRECD_LOADROWBODY, "_dpsLogRecord::loadRowBody" )
+   INT32 _dpsLogRecord::loadRowBody()
    {
-      PD_TRACE_ENTRY ( SDB__DPSLGRECD_LOAD );
-      SDB_ASSERT( NULL != pData, "impossible" ) ;
+      PD_TRACE_ENTRY ( SDB__DPSLGRECD_LOADROWBODY ) ;
       INT32 rc = SDB_OK ;
-      INT32 loadSize = 0 ;
-      INT32 totalSize = 0 ;
-      const CHAR *location = NULL ;
-      _head = *(( dpsLogRecordHeader * )pData) ;
 
-      if ( _head._length < sizeof( dpsLogRecordHeader ) ||
-           DPS_RECORD_MAX_LEN < _head._length )
-      {
-         PD_LOG ( PDERROR, "the length of record is out of range: %d",
-                  _head._length ) ;
-         rc = SDB_DPS_CORRUPTED_LOG ;
-         goto error ;
-      }
-
+      PD_CHECK( _head._length > sizeof( dpsLogRecordHeader) && _head._length < DPS_RECORD_MAX_LEN,
+                SDB_DPS_CORRUPTED_LOG, error, PDERROR, "the length of record is out of range: %d",
+                _head._length) ;
       if ( LOG_TYPE_DUMMY == _head._type )
       {
          goto done ;
       }
 
-      location = pData + sizeof( dpsLogRecordHeader ) ;
-      loadSize = 0;
+      {
+      _dpsLogRecord::iterator iter = find( DPS_LOG_ROW_ROWDATA ) ;
+      if ( !iter.valid() )
+      {
+         goto done ;
+      }
 
-      totalSize = _head._length
-                  - sizeof( dpsLogRecordHeader )
-                  - DPS_RECORD_ELE_HEADER_LEN ;
+      rc = loadBody( iter.value(), iter.len() - DPS_RECORD_ELE_HEADER_LEN ) ;
+      PD_RC_CHECK( rc, PDERROR, "Failed to parse row-record(rc=%d)!", rc ) ;
+      }
+
+   done:
+      PD_TRACE_EXITRC ( SDB__DPSLGRECD_LOADROWBODY, rc ) ;
+      return rc ;
+   error:
+      goto done ;
+   }
+
+   // PD_TRACE_DECLARE_FUNCTION ( SDB__DPSLGRECD_LOADBODY, "_dpsLogRecord::loadBody" )
+   INT32 _dpsLogRecord::loadBody( const CHAR * pData, INT32 totalSize )
+   {
+      PD_TRACE_ENTRY ( SDB__DPSLGRECD_LOADBODY );
+      SDB_ASSERT( pData, "pData can't be null!" ) ;
+
+      INT32 rc = SDB_OK ;
+      INT32 loadSize = 0 ;
+      const CHAR *location = pData ;
       while ( loadSize < totalSize )
       {
          DPS_TAG tag = DPS_GET_RECORD_TAG(location) ;
@@ -194,6 +204,44 @@ namespace engine
          loadSize += ( valueSize + DPS_RECORD_ELE_HEADER_LEN ) ;
          location += ( valueSize + DPS_RECORD_ELE_HEADER_LEN ) ;
       }
+   done:
+      PD_TRACE_EXITRC ( SDB__DPSLGRECD_LOADBODY, rc ) ;
+      return rc ;
+   error:
+      goto done ;
+   }
+
+   // PD_TRACE_DECLARE_FUNCTION ( SDB__DPSLGRECD_LOAD, "_dpsLogRecord::load" )
+   INT32 _dpsLogRecord::load( const CHAR *pData )
+   {
+      PD_TRACE_ENTRY ( SDB__DPSLGRECD_LOAD );
+      SDB_ASSERT( NULL != pData, "impossible" ) ;
+      INT32 rc = SDB_OK ;
+      INT32 totalSize = 0 ;
+      const CHAR *location = NULL ;
+      _head = *(( dpsLogRecordHeader * )pData) ;
+
+      if ( _head._length < sizeof( dpsLogRecordHeader ) ||
+           DPS_RECORD_MAX_LEN < _head._length )
+      {
+         PD_LOG ( PDERROR, "the length of record is out of range: %d",
+                  _head._length ) ;
+         rc = SDB_DPS_CORRUPTED_LOG ;
+         goto error ;
+      }
+
+      if ( LOG_TYPE_DUMMY == _head._type )
+      {
+         goto done ;
+      }
+
+      location = pData + sizeof( dpsLogRecordHeader ) ;
+
+      totalSize = _head._length
+                  - sizeof( dpsLogRecordHeader )
+                  - DPS_RECORD_ELE_HEADER_LEN ;
+      rc = loadBody( location, totalSize ) ;
+      PD_RC_CHECK( rc, PDERROR, "Failed to parse row-record(rc=%d)!", rc ) ;
    done:
       PD_TRACE_EXITRC ( SDB__DPSLGRECD_LOAD, rc );
       return rc ;

@@ -66,6 +66,8 @@ namespace engine
    #define COORD_CMD_SNAPSHOTCOLLECTIONS      CMD_ADMIN_PREFIX CMD_NAME_SNAPSHOT_COLLECTIONS
    #define COORD_CMD_SNAPSHOTCOLLECTIONSPACES CMD_ADMIN_PREFIX CMD_NAME_SNAPSHOT_COLLECTIONSPACES
    #define COORD_CMD_SNAPSHOTCATALOG          CMD_ADMIN_PREFIX CMD_NAME_SNAPSHOT_CATA
+   #define COORD_CMD_SNAPSHOTTRANSCUR         CMD_ADMIN_PREFIX CMD_NAME_SNAPSHOT_TRANSACTIONS_CUR
+   #define COORD_CMD_SNAPSHOTTRANS            CMD_ADMIN_PREFIX CMD_NAME_SNAPSHOT_TRANSACTIONS
    #define COORD_CMD_TESTCOLLECTIONSPACE      CMD_ADMIN_PREFIX CMD_NAME_TEST_COLLECTIONSPACE
    #define COORD_CMD_TESTCOLLECTION           CMD_ADMIN_PREFIX CMD_NAME_TEST_COLLECTION
    #define COORD_CMD_CREATEGROUP              CMD_ADMIN_PREFIX CMD_NAME_CREATE_GROUP
@@ -1303,6 +1305,34 @@ namespace engine
                              pmdEDUCB *cb,
                              MsgOpReply &replyHeader,
                              rtnContextBuf *buf ) ;
+   } ;
+
+   class rtnCoordCMDQueryOnMain : public rtnCoordCommand
+   {
+   public :
+      virtual INT32 execute( CHAR *pReceiveBuffer,
+                             SINT32 packSize,
+                             pmdEDUCB *cb,
+                             MsgOpReply &replyHeader,
+                             rtnContextBuf *buf ) ;
+
+      virtual INT32 processReply( pmdEDUCB *cb, REPLY_QUE replyQue,
+                                  rtnContextCoord *pContext,
+                                  CoordGroupList &retryGroups ) ;
+
+      virtual INT32 getGroups( pmdEDUCB *cb, CoordGroupList &groupList ) = 0 ;
+   } ;
+
+   class rtnCoordSnapshotTransCur : public rtnCoordCMDQueryOnMain
+   {
+   public:
+      virtual INT32 getGroups( pmdEDUCB *cb, CoordGroupList &groupList ) ;
+   } ;
+
+   class rtnCoordSnapshotTrans : public rtnCoordCMDQueryOnMain
+   {
+   public:
+      virtual INT32 getGroups( pmdEDUCB *cb, CoordGroupList &groupList ) ;
    } ;
 }
 #endif

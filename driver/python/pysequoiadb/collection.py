@@ -35,8 +35,8 @@ from pysequoiadb.error import (SDBBaseError,
 
 class collection(object):
    """Collection for SequoiaDB
-   
-   All operation need deal with the error code returned first, if it has. 
+
+   All operation need deal with the error code returned first, if it has.
    Every error code is not SDB_OK(or 0), it means something error has appeared,
    and user should deal with it according the meaning of error code printed.
 
@@ -74,7 +74,7 @@ class collection(object):
 
    def __del__(self):
       """delete a object existed.
-      
+
       Exceptions:
          pysequoiadb.error.SDBBaseError
       """
@@ -133,11 +133,11 @@ class collection(object):
                                               of all documents if None.
          split_end_condition   dict     The split end condition or None.
                                               eg:
-                                              If we create a collection with the 
+                                              If we create a collection with the
                                               option { ShardingKey:{"age":1},
                                               ShardingType:"Hash",Partition:2^10 },
                                               we can fill {age:30} as the
-                                              splitCondition, and fill {age:60} 
+                                              splitCondition, and fill {age:60}
                                               as the splitEndCondition. when
                                               split, the target replica group
                                               will get the records whose age's
@@ -177,7 +177,7 @@ class collection(object):
    def split_by_percent(self, source_group_name, target_group_name, percent):
       """Split the specified collection from source replica group to target
          replica group by percent.
-      
+
       Parameters:
          Name               Type     Info:
          source_group_name  str      The source replica group name.
@@ -205,7 +205,7 @@ class collection(object):
                          split_condition, split_end_condition = None):
       """Split the specified collection from source replica group to target
          replica group by range.
-      
+
       Parameters:
          Name                  Type  Info:
          source_group_name     str   The source replica group name.
@@ -214,11 +214,11 @@ class collection(object):
                                            all documents if None.
          split_end_condition   dict  The split end condition or None.
                                            eg:
-                                           If we create a collection with the 
+                                           If we create a collection with the
                                            option { ShardingKey:{"age":1},
                                            ShardingType:"Hash",Partition:2^10 },
                                            we can fill {age:30} as the
-                                           splitCondition, and fill {age:60} 
+                                           splitCondition, and fill {age:60}
                                            as the splitEndCondition. when split,
                                            the target replica group will get the
                                            records whose age's hash value are in
@@ -265,7 +265,7 @@ class collection(object):
                                                        percent):
       """Split the specified collection from source replica group to target
          replica group by percent.
-      
+
       Parameters:
          Name               Type     Info:
          source_group_name  str      The source replica group name.
@@ -298,7 +298,7 @@ class collection(object):
 
    def bulk_insert(self, flags, records):
       """Insert a bulk of record into current collection.
-      
+
       Parameters:
          Name        Type       Info:
          flags       int        0 or 1, see Info as below.
@@ -307,7 +307,7 @@ class collection(object):
          pysequoiadb.error.SDBTypeError
          pysequoiadb.error.SDBBaseError
       Info:
-         flags : 0 or 1. 
+         flags : 0 or 1.
          0 : stop insertting when hit index key duplicate error
          1 : continue insertting records even though index key duplicate error hit
       """
@@ -397,13 +397,14 @@ class collection(object):
          no matching.
 
       Parameters:
-         Name        Type  Info:
-         rule        dict  The updating rule.
-         **kwargs          Useful options are below
-         - condition dict  The matching rule, update all the documents
-                                 if not provided.
-         - hint      dict  The hint, automatically match the optimal hint
-                                 if not provided
+         Name          Type  Info:
+         rule          dict  The updating rule.
+         **kwargs            Useful options are below
+         - condition   dict  The matching rule, update all the documents
+                                   if not provided.
+         - hint        dict  The hint, automatically match the optimal hint
+                                   if not provided
+         - setOnInsert dict  The setOnInsert assigns the specified values to the fileds when insert
       Exceptions:
          pysequoiadb.error.SDBTypeError
          pysequoiadb.error.SDBBaseError
@@ -417,6 +418,7 @@ class collection(object):
 
       bson_condition = None
       bson_hint = None
+      bson_setOnInsert = None
 
       if "condition" in kwargs:
          if not isinstance(kwargs.get("condition"), dict):
@@ -426,9 +428,13 @@ class collection(object):
          if not isinstance(kwargs.get("hint"), dict):
             raise SDBTypeError("hint must be an instance of dict")
          bson_hint = bson.BSON.encode(kwargs.get("hint"))
+      if "setOnInsert" in kwargs:
+         if not isinstance(kwargs.get("setOnInsert"), dict):
+            raise SDBTypeError("setOnInsert must be an instance of dict")
+         bson_setOnInsert = bson.BSON.encode(kwargs.get("setOnInsert"))
 
       try:
-         rc = sdb.cl_upsert(self._cl, bson_rule, bson_condition, bson_hint)
+         rc = sdb.cl_upsert(self._cl, bson_rule, bson_condition, bson_hint, bson_setOnInsert)
          pysequoiadb._raise_if_error("Failed to update", rc)
       except SDBBaseError:
          raise
@@ -473,7 +479,7 @@ class collection(object):
          **kwargs                   Useful options are below
          - condition       dict     The matching rule, update all the
                                           documents if not provided.
-         - selected        dict     The selective rule, return the whole
+         - selector        dict     The selective rule, return the whole
                                           document if not provided.
          - order_by        dict     The ordered rule, result set is unordered
                                           if not provided.
@@ -495,7 +501,7 @@ class collection(object):
       bson_selector = None
       bson_order_by = None
       bson_hint = None
-      
+
       num_to_skip = 0L
       num_to_return = -1L
 
@@ -540,18 +546,166 @@ class collection(object):
 
       return result
 
-   def create_index(self, index_def, idx_name, is_unique, is_enforced):
-      """Create the index in current collection.
+   def query_and_update(self, update, condition = None, selector = None, order_by = None, hint = None, num_to_skip = 0, num_to_return = -1, return_new = False):
+      """Get the matching documents in current collection and update.
+
+      Parameters:
+         Name            Type     Info:
+         update          dict     The update rule, can't be null.
+         condition       dict     The matching rule, update all the
+                                          documents if not provided.
+         selector        dict     The selective rule, return the whole
+                                          document if not provided.
+         order_by        dict     The ordered rule, result set is unordered
+                                          if not provided.
+         hint            dict     The hint, automatically match the optimal
+                                          hint if not provided.
+         num_to_skip     long     Skip the first numToSkip documents,
+                                          default is 0L.
+         num_to_return   long     Only return numToReturn documents,
+                                          default is -1L for returning
+                                          all results.
+         return_new      bool     When True, returns the updated document rather than the original
+      Return values:
+         a cursor object of query
+      Exceptions:
+         pysequoiadb.error.SDBTypeError
+         pysequoiadb.error.SDBBaseError
+      """
+
+      bson_condition = None
+      bson_selector = None
+      bson_order_by = None
+      bson_hint = None
+      bson_update = None
+
+      if update != None:
+         if not isinstance(update, dict):
+            raise SDBTypeError("update must be an instance of dict")
+         bson_update = bson.BSON.encode(update)
+      else:
+         raise SDBTypeError("update can't be None")
+      if condition != None:
+         if not isinstance(condition, dict):
+            raise SDBTypeError("condition must be an instance of dict")
+         bson_condition = bson.BSON.encode(condition)
+      if selector != None:
+         if not isinstance(selector, dict):
+            raise SDBTypeError("selector must be an instance of dict")
+         bson_selector = bson.BSON.encode(selector)
+      if order_by != None:
+         if not isinstance(order_by, dict):
+            raise SDBTypeError("order_by must be an instance of dict")
+         bson_order_by = bson.BSON.encode(order_by)
+      if hint != None:
+         if not isinstance(hint, dict):
+            raise SDBTypeError("hint must be an instance of dict")
+         bson_hint = bson.BSON.encode(hint)
+      if num_to_skip != None:
+         if not isinstance(num_to_skip, int):
+            raise SDBTypeError("num_to_skip must be an instance of int")
+      if num_to_return != None:
+         if not isinstance(num_to_return, int):
+            raise SDBTypeError("num_to_return must be an instance of int")
+      if return_new != None:
+         if not isinstance(return_new, bool):
+            raise SDBTypeError("return_new must be an instance of bool")
+
+      try:
+         result = cursor()
+         rc = sdb.cl_query_and_update(self._cl, result._cursor,
+                                      bson_condition, bson_selector,
+                                      bson_order_by, bson_hint,
+                                      num_to_skip, num_to_return, return_new, bson_update)
+         pysequoiadb._raise_if_error("Failed to query", rc)
+      except SDBBaseError:
+         del result
+         result = None
+         raise
+
+      return result
+
+   def query_and_remove(self, condition = None, selector = None, order_by = None, hint = None, num_to_skip = 0, num_to_return = -1):
+      """Get the matching documents in current collection and remove.
+
+      Parameters:
+         Name            Type     Info:
+         condition       dict     The matching rule, update all the
+                                          documents if not provided.
+         selector        dict     The selective rule, return the whole
+                                          document if not provided.
+         order_by        dict     The ordered rule, result set is unordered
+                                          if not provided.
+         hint            dict     The hint, automatically match the optimal
+                                          hint if not provided.
+         num_to_skip     long     Skip the first numToSkip documents,
+                                          default is 0L.
+         num_to_return   long     Only return numToReturn documents,
+                                          default is -1L for returning
+                                          all results.
+      Return values:
+         a cursor object of query
+      Exceptions:
+         pysequoiadb.error.SDBTypeError
+         pysequoiadb.error.SDBBaseError
+      """
+
+      bson_condition = None
+      bson_selector = None
+      bson_order_by = None
+      bson_hint = None
+
+      if condition != None:
+         if not isinstance(condition, dict):
+            raise SDBTypeError("condition must be an instance of dict")
+         bson_condition = bson.BSON.encode(condition)
+      if selector != None:
+         if not isinstance(selector, dict):
+            raise SDBTypeError("selector must be an instance of dict")
+         bson_selector = bson.BSON.encode(selector)
+      if order_by != None:
+         if not isinstance(order_by, dict):
+            raise SDBTypeError("order_by must be an instance of dict")
+         bson_order_by = bson.BSON.encode(order_by)
+      if hint != None:
+         if not isinstance(hint, dict):
+            raise SDBTypeError("hint must be an instance of dict")
+         bson_hint = bson.BSON.encode(hint)
+      if num_to_skip != None:
+         if not isinstance(num_to_skip, int):
+            raise SDBTypeError("num_to_skip must be an instance of int")
+      if num_to_return != None:
+         if not isinstance(num_to_return, int):
+            raise SDBTypeError("num_to_return must be an instance of int")
+
+      try:
+         result = cursor()
+         rc = sdb.cl_query_and_remove(self._cl, result._cursor,
+                                      bson_condition, bson_selector,
+                                      bson_order_by, bson_hint,
+                                      num_to_skip, num_to_return)
+         pysequoiadb._raise_if_error("Failed to query", rc)
+      except SDBBaseError:
+         del result
+         result = None
+         raise
+
+      return result
+
+   def create_index(self, index_def, idx_name, is_unique, is_enforced, buffer_size = 64):
+      """Create an index in current collection.
 
       Parameters:
          Name         Type  Info:
          index_def    dict  The dict object of index element.
-                                  e.g. {name:1, age:-1}
+                                  e.g. {'name':1, 'age':-1}
          idx_name     str   The index name.
          is_unique    bool  Whether the index elements are unique or not.
          is_enforced  bool  Whether the index is enforced unique This
                                   element is meaningful when isUnique is set to
                                   true.
+         buffer_size  int   The size of sort buffer used when creating index,
+                                  the unit is MB, zero means don't use sort buffer
       Exceptions:
          pysequoiadb.error.SDBTypeError
          pysequoiadb.error.SDBBaseError
@@ -563,6 +717,8 @@ class collection(object):
       if not isinstance(is_unique, bool):
          raise SDBTypeError("is_unique must be an instance of bool")
       if not isinstance(is_enforced, bool):
+         raise SDBTypeError("is_enforced must be an instance of bool")
+      if not isinstance(buffer_size, int):
          raise SDBTypeError("is_enforced must be an instance of bool")
 
       unique = 0
@@ -576,7 +732,7 @@ class collection(object):
 
       try:
          rc = sdb.cl_create_index(self._cl, bson_index_def, idx_name,
-                                           is_unique, is_enforced)
+                                           is_unique, is_enforced, buffer_size)
          pysequoiadb._raise_if_error("Failed to create index", rc)
       except SDBBaseError:
          raise
@@ -958,7 +1114,7 @@ class collection(object):
       bson_selector = None
       bson_order_by = None
       bson_hint = None
-      
+
       num_to_skip = 0L
 
       if "condition" in kwargs:
@@ -1025,8 +1181,8 @@ class collection(object):
          - num_to_return   long     Only return numToReturn documents,
                                           default is -1L for returning
                                           all results.
-         - flag            int      
-         - options         json     
+         - flag            int
+         - options         json
       Return values:
          a cursor object of query
       Exceptions:
@@ -1039,7 +1195,7 @@ class collection(object):
       bson_order_by = None
       bson_hint = None
       bson_options = None
-      
+
       num_to_skip = 0L
       num_to_return = -1L
       flag = 0
@@ -1094,3 +1250,69 @@ class collection(object):
          raise
 
       return result
+
+   def truncate(self):
+      try:
+         rc = sdb.cl_truncate(self._cl)
+         pysequoiadb._raise_if_error("Truncate failed", rc)
+      except SDBBaseError:
+            raise
+
+   def create_id_index(self, options):
+      if not isinstance(options, dict):
+         raise SDBTypeError("options must be an instance of dict")
+
+      bson_options = bson.BSON.encode(options)
+      try:
+         rc = sdb.cl_create_id_index(self._cl, bson_options)
+         pysequoiadb._raise_if_error("Create id index failed", rc)
+      except SDBBaseError:
+         raise
+
+   def drop_id_index(self):
+      try:
+         rc = sdb.cl_drop_id_index(self._cl)
+         pysequoiadb._raise_if_error("Drop id index failed", rc)
+      except SDBBaseError:
+         raise
+
+   def create_index_offline(self, index_def, idx_name, is_unique, is_enforced):
+      """Create an index in current collection offline.
+
+      Parameters:
+         Name         Type  Info:
+         index_def    dict  The dict object of index element.
+                                  e.g. {'name':1, 'age':-1}
+         idx_name     str   The index name.
+         is_unique    bool  Whether the index elements are unique or not.
+         is_enforced  bool  Whether the index is enforced unique This
+                                  element is meaningful when isUnique is set to
+                                  true.
+      Exceptions:
+         pysequoiadb.error.SDBTypeError
+         pysequoiadb.error.SDBBaseError
+      """
+      if not isinstance(index_def, dict):
+         raise SDBTypeError("index definition must be an instance of dict")
+      if not isinstance(idx_name, basestring):
+         raise SDBTypeError("index name must be an instance of basestring")
+      if not isinstance(is_unique, bool):
+         raise SDBTypeError("is_unique must be an instance of bool")
+      if not isinstance(is_enforced, bool):
+         raise SDBTypeError("is_enforced must be an instance of bool")
+
+      unique = 0
+      enforce = 0
+      bson_index_def = bson.BSON.encode(index_def)
+
+      if is_unique:
+         unique = 1
+      if is_enforced:
+         enforced = 1
+
+      try:
+         rc = sdb.cl_create_index_offline(self._cl, bson_index_def, idx_name,
+                                                    is_unique, is_enforced)
+         pysequoiadb._raise_if_error("Failed to create index offline", rc)
+      except SDBBaseError:
+         raise

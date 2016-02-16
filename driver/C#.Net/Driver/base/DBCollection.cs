@@ -17,9 +17,20 @@ namespace SequoiaDB
         private string collectionFullName;
         private CollectionSpace collSpace;
         private IConnection connection;
+        private bool ensureOID = true;
         internal bool isBigEndian = false;
 
         //private readonly Logger logger = new Logger("DBCollection");
+
+        /** \property EnsureOID
+         *  \brief Get or set whether insert oid in records when bulk insert
+         *  \return True for ensure, false for not
+         */
+        public bool EnsureOID
+        {
+            get { return ensureOID; }
+            set { ensureOID = value; }
+        }
 
         /** \property Name
          *  \brief Return the name of current collection
@@ -266,10 +277,11 @@ namespace SequoiaDB
             return taskid;
         }
 
-        /** \fn ObjectId Insert(BsonDocument insertor)
+        /** \fn BsonValue Insert(BsonDocument insertor)
          *  \brief Insert a document into current collection
          *  \param insertor The Bson document of insertor, can't be null
-         *  \return ObjectId
+         *  \return The value of field "_id" in "insertor", if "insertor" has no field "_id",
+         *          API will add one and return the value which type is ObjectId
          *  \exception SequoiaDB.BaseException
          *  \exception System.Exception
          */
@@ -289,7 +301,6 @@ namespace SequoiaDB
 
             ObjectId objId;
             BsonValue tmp;
-            //if (insertor.
             if (insertor.TryGetValue(SequoiadbConstants.OID, out tmp))
             {
                 ;
@@ -334,13 +345,13 @@ namespace SequoiaDB
             if (flag != 0 && flag != SDBConst.FLG_INSERT_CONTONDUP)
                 throw new BaseException(flag);
             sdbMessage.Flags = flag;
-            sdbMessage.Insertor = insertor[0];
+            sdbMessage.Insertor = _TryGenOID(insertor[0], this.EnsureOID);
 
             byte[] request = SDBMessageHelper.BuildInsertRequest(sdbMessage, isBigEndian);
 
             for (int count = 1; count < insertor.Count; count++)
             {
-                request = SDBMessageHelper.AppendInsertMsg(request, insertor[count], isBigEndian);
+                request = SDBMessageHelper.AppendInsertMsg(request, _TryGenOID(insertor[count], this.EnsureOID), isBigEndian);
             }
             connection.SendMessage(request);
             SDBMessage rtnSDBMessage = SDBMessageHelper.MsgExtractReply(connection.ReceiveMessage(isBigEndian), isBigEndian);
@@ -676,22 +687,24 @@ namespace SequoiaDB
          */
         public void CreateIndex(string name, BsonDocument key, bool isUnique, bool isEnforced) 
         {
-            string commandString = SequoiadbConstants.ADMIN_PROMPT + SequoiadbConstants.CREATE_INX;
-            BsonDocument obj = new BsonDocument();
-            BsonDocument dummyObj = new BsonDocument();
-            BsonDocument createObj = new BsonDocument();
-            obj.Add(SequoiadbConstants.IXM_NAME, name);
-            obj.Add(SequoiadbConstants.IXM_KEY, key);
-            obj.Add(SequoiadbConstants.IXM_UNIQUE, isUnique);
-            obj.Add(SequoiadbConstants.IXM_ENFORCED, isEnforced);
-            createObj.Add(SequoiadbConstants.FIELD_COLLECTION, collectionFullName);
-            createObj.Add(SequoiadbConstants.FIELD_INDEX, obj);
+            _CreateIndex(name, key, isUnique, isEnforced, SequoiadbConstants.IXM_SORT_BUFFER_DEFAULT_SIZE);
+        }
 
-            SDBMessage rtn = AdminCommand(commandString, createObj, dummyObj, dummyObj, dummyObj, -1, -1, 0);
-
-            int flags = rtn.Flags;
-            if (flags != 0)
-                throw new BaseException(flags);
+        /** \fn void CreateIndex(string name, BsonDocument key, bool isUnique, bool isEnforced, int sortBufferSize)
+         *  \brief Specify sort buffer size to create a index
+         *  \param name The index name
+         *  \param key The index key
+         *  \param isUnique Whether the index elements are unique or not
+         *  \param isEnforced Whether the index is enforced unique.
+         *                    This element is meaningful when isUnique is group to true.
+         *  \param sortBufferSize The size of sort buffer used when creating index, the unit is MB,
+         *                        zero means don't use sort buffer.
+         *  \exception SequoiaDB.BaseException
+         *  \exception System.Exception
+         */
+        public void CreateIndex(string name, BsonDocument key, bool isUnique, bool isEnforced, int sortBufferSize)
+        {
+            _CreateIndex(name, key, isUnique, isEnforced, sortBufferSize);
         }
 
         /** \fn void DropIndex(string name)
@@ -1038,6 +1051,21 @@ namespace SequoiaDB
 
         }
 
+        private BsonDocument _TryGenOID(BsonDocument obj, bool ensureOID)
+        {
+            if (true == ensureOID)
+            {
+                ObjectId objId;
+                BsonValue tmp;
+                if (!obj.TryGetValue(SequoiadbConstants.OID, out tmp))
+                {
+                    objId = ObjectId.GenerateNewId();
+                    obj.Add(SequoiadbConstants.OID, objId);
+                }
+            }
+            return obj;
+        }
+
         private void _Update(int flag, BsonDocument matcher, BsonDocument modifier, BsonDocument hint)
         {
             if ( modifier == null )
@@ -1066,6 +1094,31 @@ namespace SequoiaDB
             SDBMessage rtnSDBMessage = SDBMessageHelper.MsgExtractReply(connection.ReceiveMessage(isBigEndian), isBigEndian);
             rtnSDBMessage = SDBMessageHelper.CheckRetMsgHeader(sdbMessage, rtnSDBMessage);
             int flags = rtnSDBMessage.Flags;
+            if (flags != 0)
+                throw new BaseException(flags);
+        }
+
+        private void _CreateIndex(string name, BsonDocument key, bool isUnique, bool isEnforced, int sortBufferSize)
+        {
+            if (sortBufferSize < 0)
+                throw new BaseException("SDB_INVALIDARG");
+            string commandString = SequoiadbConstants.ADMIN_PROMPT + SequoiadbConstants.CREATE_INX;
+            BsonDocument obj = new BsonDocument();
+            BsonDocument dummyObj = new BsonDocument();
+            BsonDocument createObj = new BsonDocument();
+            BsonDocument hintObj = new BsonDocument();
+            obj.Add(SequoiadbConstants.IXM_NAME, name);
+            obj.Add(SequoiadbConstants.IXM_KEY, key);
+            obj.Add(SequoiadbConstants.IXM_UNIQUE, isUnique);
+            obj.Add(SequoiadbConstants.IXM_ENFORCED, isEnforced);
+            createObj.Add(SequoiadbConstants.FIELD_COLLECTION, collectionFullName);
+            createObj.Add(SequoiadbConstants.FIELD_INDEX, obj);
+
+            hintObj.Add(SequoiadbConstants.IXM_SORT_BUFFER_SIZE, sortBufferSize);
+
+            SDBMessage rtn = AdminCommand(commandString, createObj, dummyObj, dummyObj, hintObj, -1, -1, 0);
+
+            int flags = rtn.Flags;
             if (flags != 0)
                 throw new BaseException(flags);
         }

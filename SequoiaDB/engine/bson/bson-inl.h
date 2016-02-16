@@ -131,7 +131,7 @@ namespace bson {
             ss << " first element: " << e.toString();
         }
         catch ( ... ) { }
-        massert( 10334 , ss.str() , 0 );
+        massert( 10334 , ss.str().c_str() , 0 );
     }
 
     /* the idea with NOINLINE_DECL here is to keep this from inlining in the
@@ -839,15 +839,22 @@ namespace bson {
                 char *pBase64Buf = NULL ;
                 const char* data = binDataClean(len);
                 base64_size = getEnBase64Size( len ) ;
-                pBase64Buf = (char *)malloc( base64_size + 1 ) ;
-                if ( pBase64Buf )
+                if( len > 0 )
                 {
-                   memset( pBase64Buf, 0, base64_size + 1 ) ;
-                   if ( base64Encode( data, len, pBase64Buf, base64_size ) )
+                   pBase64Buf = (char *)malloc( base64_size + 1 ) ;
+                   if ( pBase64Buf )
                    {
-                     s << pBase64Buf << "\", \"$type\": \"" << binDataType() ;
+                      memset( pBase64Buf, 0, base64_size + 1 ) ;
+                      if ( base64Encode( data, len, pBase64Buf, base64_size ) >= 0 )
+                      {
+                        s << pBase64Buf << "\", \"$type\": \"" << binDataType() ;
+                      }
+                      free( pBase64Buf ) ;
                    }
-                   free( pBase64Buf ) ;
+                }
+                else if( len == 0 )
+                {
+                   s << "\", \"$type\": \"" << binDataType() ;
                 }
             }
             s << "\" }" ;

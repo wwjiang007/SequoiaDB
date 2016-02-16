@@ -175,7 +175,14 @@ namespace engine
          {
             _fieldName = fieldName ;
             _regex = regex ;
-            _flags = options ;
+            if ( NULL == options )
+            {
+               _flags = "" ;
+            }
+            else
+            {
+               _flags = options ;
+            }
             _goSimpleMatch = _isPureWords(_regex, _flags);
             _re.reset ( new RE(_regex, flags2options(_flags) )) ;
          }
@@ -260,6 +267,8 @@ namespace engine
 
       BOOLEAN _totallyConverted ;
 
+      BOOLEAN _hasDollarVar ;
+
       INT32 _createLME ( LogicMatchElement *lme,
                          LogicMatchElement **clme,
                          INT32   logicType,
@@ -302,6 +311,18 @@ namespace engine
                        BOOLEAN isNot,
                        INT32 &result,
                        vector<INT64> *dollarList ) ;
+
+      INT32 _dollarMatches( const CHAR *fieldName,
+                            const BSONElement &toMatch,
+                            const BSONObj &rootObj,
+                            const BSONElement &field,
+                            BSONObj::MatchType op,
+                            BOOLEAN isNot,
+                            BOOLEAN isFieldCom,
+                            const MatchElement &bm,
+                            INT32 &result,
+                            vector<INT64> *dollarList ) ;
+
       INT32 _traverseMatches ( LogicMatchElement *lme,
                               const BSONObj &obj,
                               BOOLEAN isNot,
@@ -330,6 +351,10 @@ namespace engine
 
       INT32 _createBsonBuilder( BSONObjBuilder **builder ) ;
 
+      INT32 _addPredicate( const CHAR *fieldName,
+                           const bson::BSONElement &e,
+                           BOOLEAN isNot ) ;
+
       friend class _mthMatcher::_MatchElement ;
    public:
       _mthMatcher ()
@@ -338,6 +363,7 @@ namespace engine
          _initialized = FALSE ;
          _matchesAll  = TRUE ;
          _totallyConverted = TRUE ;
+         _hasDollarVar = FALSE ;
       }
       ~_mthMatcher ()
       {

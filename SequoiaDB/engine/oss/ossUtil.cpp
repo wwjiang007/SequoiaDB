@@ -1429,7 +1429,7 @@ BOOLEAN ossProcLimits::getLimit( const CHAR *str,
 
 std::string ossProcLimits::str()const
 {
-   return string("") ;
+   return std::string("") ;
 }
 #endif
 

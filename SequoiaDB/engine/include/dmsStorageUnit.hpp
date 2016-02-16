@@ -192,7 +192,8 @@ namespace engine
          INT32    createIndex ( const CHAR *pName, const BSONObj &index,
                                 _pmdEDUCB * cb, SDB_DPSCB *dpscb,
                                 BOOLEAN isSys = FALSE,
-                                dmsMBContext *context = NULL ) ;
+                                dmsMBContext *context = NULL,
+                                INT32 sortBufferSize = SDB_INDEX_SORT_BUFFER_DEFAULT_SIZE ) ;
 
          INT32    dropIndex( const CHAR *pName, const CHAR *indexName,
                              _pmdEDUCB * cb, SDB_DPSCB *dpscb,

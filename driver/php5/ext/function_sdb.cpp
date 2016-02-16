@@ -670,7 +670,8 @@ INT32 createIndex ( sdbCollection *collection,
                     const CHAR *indexDef,
                     const CHAR *pName,
                     BOOLEAN isUnique,
-                    BOOLEAN isEnforced )
+                    BOOLEAN isEnforced,
+                    INT32 sortBufferSize )
 {
    INT32 rc = SDB_OK ;
    BSONObj indexDef_bson ;
@@ -685,10 +686,11 @@ INT32 createIndex ( sdbCollection *collection,
    {
       return SDB_INVALIDARG;
    }
-   rc = collection->createIndex ( indexDef_bson,
-                                  pName,
-                                  isUnique,
-                                  isEnforced ) ;
+   rc = collection->createIndex( indexDef_bson,
+                                 pName,
+                                 isUnique,
+                                 isEnforced,
+                                 sortBufferSize ) ;
 
    return rc ;
 }

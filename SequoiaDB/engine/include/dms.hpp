@@ -97,6 +97,8 @@ namespace engine
 #define SDB_DMSTEMP_NAME            "SYSTEMP"
 #define DMS_TEMP_NAME_PATTERN       "%s%04d"
 
+#define DMS_INDEX_SORT_BUFFER_MIN_SIZE     32
+
    /*
       DMS TOOL FUNCTIONS:
    */

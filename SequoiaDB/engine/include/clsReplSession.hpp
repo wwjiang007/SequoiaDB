@@ -71,6 +71,8 @@ namespace engine
          virtual BOOLEAN canAttachMeta() const { return FALSE ; }
 
          virtual BOOLEAN timeout ( UINT32 interval ) ;
+         virtual void    onRecieve ( const NET_HANDLE netHandle,
+                                     MsgHeader * msg ) ;
          virtual void    onTimer ( UINT64 timerID, UINT32 interval ) ;
          virtual void   _onAttach () ;
          virtual void   _onDetach () ;

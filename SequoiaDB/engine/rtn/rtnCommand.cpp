@@ -650,7 +650,8 @@ namespace engine
    IMPLEMENT_CMD_AUTO_REGISTER(_rtnCreateIndex)
 
    _rtnCreateIndex::_rtnCreateIndex ()
-   : _collectionName ( NULL )
+   : _collectionName ( NULL ),
+     _sortBufferSize ( SDB_INDEX_SORT_BUFFER_DEFAULT_SIZE )
    {
    }
 
@@ -688,6 +689,8 @@ namespace engine
    {
       PD_TRACE_ENTRY ( SDB__RTNCREATEINDEX_INIT ) ;
       BSONObj arg ( pMatcherBuff ) ;
+      BSONObj hint ( pHintBuff ) ;
+
       INT32 rc = rtnGetStringElement ( arg, FIELD_NAME_COLLECTION,
                                        &_collectionName ) ;
       if ( SDB_OK != rc )
@@ -701,6 +704,24 @@ namespace engine
       {
          PD_LOG ( PDERROR, "Failed to get object index " ) ;
          goto error ;
+      }
+
+      if ( hint.hasField( IXM_FIELD_NAME_SORT_BUFFER_SIZE ) )
+      {
+         rc = rtnGetIntElement( hint, IXM_FIELD_NAME_SORT_BUFFER_SIZE, _sortBufferSize ) ;
+         if ( SDB_OK != rc )
+         {
+            PD_LOG ( PDERROR, "Failed to get index sort buffer, hint: %s",
+                     hint.toString().c_str() ) ;
+            goto error ;
+         }
+
+         if ( _sortBufferSize < 0 )
+         {
+            PD_LOG ( PDERROR, "invalid index sort buffer size: %d", _sortBufferSize ) ;
+            rc = SDB_INVALIDARG ;
+            goto error ;
+         }
       }
 
    done:
@@ -719,7 +740,7 @@ namespace engine
       PD_TRACE_ENTRY ( SDB__RTNCREATEINDEX_DOIT ) ;
 
       rc = rtnCreateIndexCommand ( _collectionName, _index, cb,
-                                   dmsCB, dpsCB ) ;
+                                   dmsCB, dpsCB, FALSE, _sortBufferSize ) ;
       PD_TRACE_EXITRC ( SDB__RTNCREATEINDEX_DOIT, rc ) ;
       return rc ;
    }
@@ -1688,6 +1709,73 @@ namespace engine
    RTN_COMMAND_TYPE _rtnSnapshotSessionsCurrent::type ()
    {
       return CMD_SNAPSHOT_SESSIONS_CURRENT ;
+   }
+
+   IMPLEMENT_CMD_AUTO_REGISTER(_rtnSnapshotTransactionsCurrent)
+   _rtnSnapshotTransactionsCurrent::_rtnSnapshotTransactionsCurrent()
+   {
+   }
+
+   _rtnSnapshotTransactionsCurrent::~_rtnSnapshotTransactionsCurrent ()
+   {
+   }
+
+   const CHAR *_rtnSnapshotTransactionsCurrent::name ()
+   {
+      return NAME_SNAPSHOT_TRANSACTIONS_CUR ;
+   }
+
+   RTN_COMMAND_TYPE _rtnSnapshotTransactionsCurrent::type ()
+   {
+      return CMD_SNAPSHOT_TRANSACTIONS_CUR ;
+   }
+
+   INT32 _rtnSnapshotTransactionsCurrent::doit ( _pmdEDUCB *cb,
+                                                 _SDB_DMSCB *dmsCB,
+                                                 _SDB_RTNCB *rtnCB,
+                                                 _dpsLogWrapper *dpsCB,
+                                                 INT16 w,
+                                                 INT64 *pContextID )
+   {
+      INT32 rc = SDB_OK ;
+      rtnContextTransDump *context = NULL ;
+      BSONObj matcher( _matcherBuff ) ;
+      BSONObj selector( _selectBuff ) ;
+
+      rc = rtnCB->contextNew( RTN_CONTEXT_TRANS_DUMP,
+                              (rtnContext **)&context,
+                              *pContextID, cb ) ;
+      PD_RC_CHECK( rc, PDERROR,
+                   "Failed to create new context(rc = %d)!",
+                   rc ) ;
+      rc = context->open( selector, matcher, _numToReturn, _numToSkip,
+                          isDumpCurrent() ) ;
+      PD_RC_CHECK( rc, PDERROR,
+                   "Failed to open the context(rc = %d)!",
+                   rc ) ;
+   done:
+      return rc ;
+   error:
+      goto done ;
+   }
+
+   IMPLEMENT_CMD_AUTO_REGISTER(_rtnSnapshotTransactions)
+   _rtnSnapshotTransactions::_rtnSnapshotTransactions()
+   {
+   }
+
+   _rtnSnapshotTransactions::~_rtnSnapshotTransactions()
+   {
+   }
+
+   const CHAR *_rtnSnapshotTransactions::name ()
+   {
+      return NAME_SNAPSHOT_TRANSACTIONS ;
+   }
+
+   RTN_COMMAND_TYPE _rtnSnapshotTransactions::type ()
+   {
+      return CMD_SNAPSHOT_TRANSACTIONS ;
    }
 
    IMPLEMENT_CMD_AUTO_REGISTER(_rtnSnapshotCollections)

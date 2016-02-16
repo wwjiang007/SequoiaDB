@@ -168,7 +168,7 @@ namespace SequoiaDB
         public Node CreateNode(string hostName, int port, string dbpath,
                                Dictionary<string, string> map)
         {
-            if (hostName == null || port < 0 || port < 0 || port > 65535 ||
+            if (hostName == null || port < 0 || port > 65535 ||
                 dbpath == null )
             throw new BaseException("SDB_INVALIDARG");
             string command = SequoiadbConstants.ADMIN_PROMPT + SequoiadbConstants.CREATE_CMD + " "

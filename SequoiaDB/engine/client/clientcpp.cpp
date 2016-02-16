@@ -1474,18 +1474,20 @@ do                                                            \
 
    }*/
 
-   PD_TRACE_DECLARE_FUNCTION ( SDB_CLIENT_CREATEINDEX, "_sdbCollectionImpl::createIndex" )
-   INT32 _sdbCollectionImpl::createIndex ( const BSONObj &indexDef,
-                                           const CHAR *pName,
-                                           BOOLEAN isUnique,
-                                           BOOLEAN isEnforced )
+//   PD_TRACE_DECLARE_FUNCTION ( SDB_CLIENT__CREATEINDEX, "_sdbCollectionImpl::_createIndex" )
+   INT32 _sdbCollectionImpl::_createIndex ( const BSONObj &indexDef,
+                                            const CHAR *pName,
+                                            BOOLEAN isUnique,
+                                            BOOLEAN isEnforced,
+                                            INT32 sortBufferSize )
    {
-      PD_TRACE_ENTRY ( SDB_CLIENT_CREATEINDEX ) ;
+      PD_TRACE_ENTRY ( SDB_CLIENT__CREATEINDEX ) ;
       INT32 rc = SDB_OK ;
       BOOLEAN result ;
       SINT64 contextID = 0 ;
       BSONObj indexObj ;
       BSONObj newObj ;
+      BSONObj hintObj ;
       BOOLEAN locked = FALSE ;
       if ( _collectionFullName [0] == '\0' || !_connection ||
            !pName )
@@ -1493,6 +1495,13 @@ do                                                            \
          rc = SDB_INVALIDARG ;
          goto error ;
       }
+
+      if ( sortBufferSize < 0 )
+      {
+         rc = SDB_INVALIDARG ;
+         goto error ;
+      }
+
       indexObj = BSON ( IXM_FIELD_NAME_KEY << indexDef <<
                         IXM_FIELD_NAME_NAME << pName <<
                         IXM_FIELD_NAME_UNIQUE << isUnique <<
@@ -1501,11 +1510,14 @@ do                                                            \
       newObj = BSON ( FIELD_NAME_COLLECTION << _collectionFullName <<
                       FIELD_NAME_INDEX << indexObj ) ;
 
+      hintObj = BSON ( IXM_FIELD_NAME_SORT_BUFFER_SIZE << sortBufferSize ) ;
+
       rc = clientBuildQueryMsgCpp ( &_pSendBuffer, &_sendBufferSize,
                                     CMD_ADMIN_PREFIX CMD_NAME_CREATE_INDEX,
                                     0, 0, -1, -1,
                                     newObj.objdata(),
-                                    NULL, NULL, NULL,
+                                    NULL, NULL,
+                                    hintObj.objdata(),
                                     _connection->_endianConvert ) ;
       if ( rc )
       {
@@ -1528,13 +1540,31 @@ do                                                            \
    done :
       if ( locked )
          _connection->unlock () ;
-      PD_TRACE_EXITRC ( SDB_CLIENT_CREATEINDEX, rc );
+      PD_TRACE_EXITRC ( SDB_CLIENT__CREATEINDEX, rc );
       return rc ;
    error :
       goto done ;
    }
 
-   PD_TRACE_DECLARE_FUNCTION ( SDB_CLIENT_GETINDEXES, "_sdbCollectionImpl::getIndexes" )
+   INT32 _sdbCollectionImpl::createIndex ( const BSONObj &indexDef,
+                                           const CHAR *pName,
+                                           BOOLEAN isUnique,
+                                           BOOLEAN isEnforced )
+   {
+      return _createIndex ( indexDef, pName, isUnique, isEnforced,
+                            SDB_INDEX_SORT_BUFFER_DEFAULT_SIZE) ;
+   }
+
+   INT32 _sdbCollectionImpl::createIndex ( const BSONObj &indexDef,
+                                           const CHAR *pName,
+                                           BOOLEAN isUnique,
+                                           BOOLEAN isEnforced,
+                                           INT32 sortBufferSize )
+   {
+      return _createIndex ( indexDef, pName, isUnique, isEnforced, sortBufferSize ) ;
+   }
+
+//   PD_TRACE_DECLARE_FUNCTION ( SDB_CLIENT_GETINDEXES, "_sdbCollectionImpl::getIndexes" )
    INT32 _sdbCollectionImpl::getIndexes ( _sdbCursor **cursor,
                                           const CHAR *pName )
    {
@@ -4736,6 +4766,7 @@ do                                                            \
          goto error ;
       }
       _sock->disableNagle () ;
+      _sock->setKeepAlive( 1, 15, 5, 3 ) ;
 
       if ( _useSSL )
       {
@@ -4887,7 +4918,6 @@ do                                                            \
          rc = SDB_INVALIDARG ;
          goto error ;
       }
-      srand ( (UINT32)time(NULL) ) ;
       i = rand() % arrSize ;
       mark = i ;
 

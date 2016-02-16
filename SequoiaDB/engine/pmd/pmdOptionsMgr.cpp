@@ -76,6 +76,7 @@ namespace engine
    #define PMD_MAX_NUMPAGECLEAN        (50)
    #define PMD_DFT_PAGECLEANINTERVAL   (10000)
    #define PMD_MIN_PAGECLEANINTERVAL   (1000)
+   #define PMD_DFT_TRANS_TIMEOUT       (60)  // 1 minute
 
    /*
       _pmdCfgExchange implement
@@ -626,7 +627,8 @@ namespace engine
    INT32 _pmdCfgRecord::parseAddressLine( const CHAR * pAddressLine,
                                           vector < pmdAddrPair > & vecAddr,
                                           const CHAR * pItemSep,
-                                          const CHAR * pInnerSep ) const
+                                          const CHAR * pInnerSep,
+                                          UINT32 maxSize ) const
    {
       INT32 rc = SDB_OK ;
       vector<string> addrs ;
@@ -646,7 +648,7 @@ namespace engine
       boost::algorithm::split( addrs, pAddressLine,
                                boost::algorithm::is_any_of(
                                pItemSep ) ) ;
-      if ( CLS_REPLSET_MAX_NODE_SIZE < addrs.size() )
+      if ( maxSize > 0 && maxSize < addrs.size() )
       {
          std::cerr << "addr more than max member size" << endl ;
          rc = SDB_INVALIDARG ;
@@ -1239,6 +1241,7 @@ namespace engine
       _indexScanStep       = PMD_DFT_INDEX_SCAN_STEP ;
       _dpslocal            = FALSE ;
       _traceOn             = FALSE ;
+      _transTimeout        = PMD_DFT_TRANS_TIMEOUT ;
       _traceBufSz          = TRACE_DFT_BUFFER_SIZE ;
       _transactionOn       = FALSE ;
       _sharingBreakTime    = PMD_OPTION_BRK_TIME_DEFAULT ;
@@ -1360,6 +1363,9 @@ namespace engine
                  TRACE_MAX_BUFFER_SIZE, TRUE ) ;
       rdxBooleanS( pEX, PMD_OPTION_TRANSACTIONON, _transactionOn, FALSE,
                    TRUE, FALSE ) ;
+      rdxUInt( pEX, PMD_OPTION_TRANSTIMEOUT, _transTimeout, FALSE, TRUE,
+               PMD_DFT_TRANS_TIMEOUT, TRUE ) ;
+      rdvMinMax( pEX, _transTimeout, 0, 3600, TRUE ) ;
       rdxUInt( pEX, PMD_OPTION_SHARINGBRK, _sharingBreakTime, FALSE, TRUE,
                PMD_OPTION_BRK_TIME_DEFAULT, TRUE ) ;
       rdvMinMax( pEX, _sharingBreakTime, 5000, 300000, TRUE ) ;
@@ -1620,6 +1626,13 @@ namespace engine
             rc = SDB_INVALIDPATH ;
             goto error ;
          }
+      }
+
+      if ( _transactionOn )
+      {
+         PD_CHECK( _logFileNum >= 5, SDB_INVALIDARG, error, PDERROR,
+                   "The value of parameter \"logfilenum\" must be greater than 5 "
+                   "when  configure transaction" ) ;
       }
 
       if ( _memDebugSize != 0 )

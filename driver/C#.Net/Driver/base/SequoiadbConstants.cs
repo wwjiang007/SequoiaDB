@@ -133,6 +133,8 @@ namespace SequoiaDB
         public const string IXM_UNIQUE = "unique";
         public const string IXM_ENFORCED = "enforced";
         public const string IXM_INDEXDEF = "IndexDef";
+        public const string IXM_SORT_BUFFER_SIZE = "SortBufferSize";
+        public const int IXM_SORT_BUFFER_DEFAULT_SIZE = 64;
 
         public const string SDB_AUTH_USER = "User";
         public const string SDB_AUTH_PASSWD = "Passwd";

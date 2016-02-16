@@ -186,7 +186,7 @@ namespace engine
             newTransGroupLst.erase( pReply->header.routeID.columns.groupID );
             cb->addTransNode( pReply->header.routeID );
          }
-         else if ( !hasRetry && rtnCoordWriteRetryRC( rc ) )
+         else if ( !hasRetry && rtnCoordWriteRetryRC( rcTmp ) )
          {
             rcTmp = rtnCoordGetGroupInfo( cb,
                pReply->header.routeID.columns.groupID,
@@ -397,29 +397,7 @@ namespace engine
       }
       return rc;
    error:
-      adjustTransSession( sendGroupList, pRouteAgent, cb );
       goto done;
-   }
-
-   void rtnCoordTransOperator::adjustTransSession( CoordGroupList &transGroupLst,
-                                                   netMultiRouteAgent *pRouteAgent,
-                                                   pmdEDUCB *cb )
-   {
-      DpsTransNodeMap *pTransNodeList = cb->getTransNodeLst();
-      if ( pTransNodeList )
-      {
-         DpsTransNodeMap::iterator iter = pTransNodeList->begin();
-         while ( iter != pTransNodeList->end() )
-         {
-            if ( transGroupLst.find( iter->first )
-               == transGroupLst.end() )
-            {
-               pTransNodeList->erase( iter++ );
-               continue;
-            }
-            ++iter;
-         }
-      }
    }
 
    /*

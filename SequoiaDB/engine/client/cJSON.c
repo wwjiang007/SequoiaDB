@@ -65,12 +65,14 @@ static const char *dollar_command_string[]= {
    CJSON_OP_OPTIONS     , CJSON_OP_OR     , CJSON_OP_POP     , CJSON_OP_PULLALL,
    CJSON_OP_PULL        ,
    CJSON_OP_PUSHALL     , CJSON_OP_PUSH   , CJSON_OP_REGEX   , CJSON_OP_RENAME ,
+   CJSON_OP_REPLACE     ,
    CJSON_OP_SET         , CJSON_OP_SIZE   , CJSON_OP_TYPE    , CJSON_OP_UNSET  ,
    CJSON_OP_WINTHIN     , CJSON_OP_FIELD  , CJSON_OP_SUM     , CJSON_OP_PROJECT,
    CJSON_OP_MATCH       , CJSON_OP_LIMIT  , CJSON_OP_SKIP    , CJSON_OP_GROUP  ,
    CJSON_OP_FIRST       , CJSON_OP_LAST   , CJSON_OP_MAX     , CJSON_OP_MIN    ,
    CJSON_OP_AVG         , CJSON_OP_SORT   , CJSON_OP_MERGEARRAYSET,
-   CJSON_OP_ISNULL      , CJSON_INNER_META
+   CJSON_OP_ISNULL      , CJSON_INNER_META, CJSON_INNER_AGGR , CJSON_INNER_SETONINSERT,
+   CJSON_INNER_MODIFY
 } ;
 
 static const char *parse_array_size(const char *value);
@@ -142,6 +144,7 @@ static const char *parse_number(cJSON *item,const char *num)
    double n=0,sign=1,scale=0;int subscale=0,signsubscale=1;
    int n1=0 ;
    long long n2 = 0 ;
+   volatile long long n3 = 0 ;
    item->numType = cJSON_INT32 ;
    /* Could use sscanf for this? */
    if (*num=='-')
@@ -159,16 +162,21 @@ static const char *parse_number(cJSON *item,const char *num)
    {
       do
       {
-         n=(n*10.0)+(*num -'0');   
-         n1=(n1*10)+(*num -'0') ;
-         n2=(n2*10)+(*num -'0') ;
+         n3 = (n2*10)+(*num - '0') ;
+         if( ( n3 - (*num - '0') ) / 10 != n2 )
+         {
+            item->numType = cJSON_DOUBLE ;
+         }
+         n=(n*10.0)+(*num - '0') ;   
+         n1=(n1*10)+(*num - '0') ;
+         n2=n3 ;
          ++num ;
-         if ( cJSON_INT32== item->numType &&
-               (long long)n1!=n2 )
+         if( cJSON_INT32 == item->numType &&
+             (long long)n1!= n2 )
          {
             item->numType = cJSON_INT64 ;
          }
-      } while (*num>='0' && *num<='9');   /* Number? */
+      }while (*num>='0' && *num<='9');   /* Number? */
    }
    if (*num=='.' && num[1]>='0' && num[1]<='9') 
    {
@@ -952,7 +960,7 @@ static const char *parse_first_command(cJSON *item,const char *value,int cj_type
                   psr.tm_hour,
                   psr.tm_min,
                   psr.tm_sec,
-                  i ) ;
+                  i * 1000 ) ;
          item->valuestring = (char*)cJSON_malloc( 64 ) ;
          memset ( item->valuestring, 0, 64 ) ;
          strncpy ( item->valuestring, temp, 64 ) ;

@@ -51,6 +51,7 @@ namespace engine
    class _pmdEDUCB ;
    class _ixmIndexCB ;
    class _dmsMBContext ;
+   class _ixmKey ;
 
    #define DMS_INDEXSU_EYECATCHER         "SDBIDX"
    #define DMS_INDEXSU_CUR_VERSION        1
@@ -72,7 +73,8 @@ namespace engine
 
          INT32    createIndex ( _dmsMBContext *context, const BSONObj &index,
                                 _pmdEDUCB *cb, SDB_DPSCB *dpscb,
-                                BOOLEAN isSys = FALSE ) ;
+                                BOOLEAN isSys = FALSE,
+                                INT32 sortBufferSize = SDB_INDEX_SORT_BUFFER_DEFAULT_SIZE ) ;
 
          INT32    dropIndex ( _dmsMBContext *context, OID &indexOID,
                               _pmdEDUCB *cb, SDB_DPSCB *dpscb,
@@ -89,7 +91,8 @@ namespace engine
                               dmsExtentID indexLID, _pmdEDUCB *cb,
                               SDB_DPSCB *dpscb, BOOLEAN isSys = FALSE ) ;
 
-         INT32    rebuildIndexes ( _dmsMBContext *context, _pmdEDUCB *cb ) ;
+         INT32    rebuildIndexes ( _dmsMBContext *context, _pmdEDUCB *cb,
+                                   INT32 sortBufferSize = SDB_INDEX_SORT_BUFFER_DEFAULT_SIZE ) ;
 
          INT32    indexesInsert ( _dmsMBContext *context, dmsExtentID extLID,
                                   BSONObj &inputObj, const dmsRecordID &rid,
@@ -124,7 +127,14 @@ namespace engine
       private:
 
          INT32    _rebuildIndex ( _dmsMBContext *context, INT32 indexID,
-                                  dmsExtentID indexLID, _pmdEDUCB * cb ) ;
+                                  dmsExtentID indexLID, _pmdEDUCB * cb,
+                                  INT32 sortBufferSize ) ;
+
+         INT32    _indexInsert( _ixmIndexCB *indexCB,
+                                 const _ixmKey &key, const dmsRecordID &rid,
+                                 const Ordering& order,
+                                 _pmdEDUCB *cb, BOOLEAN dupAllowed,
+                                 BOOLEAN dropDups ) ;
 
          INT32    _indexInsert ( _dmsMBContext *context, _ixmIndexCB *indexCB,
                                  BSONObj &inputObj, const dmsRecordID &rid,
@@ -159,6 +169,7 @@ namespace engine
       private:
          _dmsStorageData               *_pDataSu ;
 
+      friend class _dmsIndexBuilder ;
    };
    typedef _dmsStorageIndex dmsStorageIndex ;
 

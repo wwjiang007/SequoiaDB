@@ -281,7 +281,8 @@ namespace engine
                                  _pmdEDUCB *cb,
                                  SDB_DMSCB *dmsCB,
                                  SDB_DPSCB *dpsCB,
-                                 BOOLEAN isSys = FALSE ) ;
+                                 BOOLEAN isSys = FALSE,
+                                 INT32 sortBufferSize = SDB_INDEX_SORT_BUFFER_DEFAULT_SIZE ) ;
 
    INT32 rtnDropCollectionCommand ( const CHAR *pCollection,
                                     _pmdEDUCB *cb,

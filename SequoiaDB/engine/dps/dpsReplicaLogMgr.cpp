@@ -386,9 +386,19 @@ namespace engine
       _mergeLogs( info.getMergeBlock(), info.getMergeBlock().pageMeta() );
       SHARED_UNLOCK_NODES( info.getMergeBlock().pageMeta() );
 
-      if ( _transCB )
+      if ( _transCB && !_restoreFlag )
       {
-         _transCB->saveTransInfoFromLog( info.getMergeBlock().record() ) ;
+         if ( info.getMergeBlock().isRow() )
+         {
+            dpsLogRecord newRecord ;
+            newRecord = info.getMergeBlock().record() ;
+            newRecord.loadRowBody() ;
+            _transCB->saveTransInfoFromLog( newRecord ) ;
+         }
+         else
+         {
+          _transCB->saveTransInfoFromLog( info.getMergeBlock().record() ) ;
+         }
       }
 
       PD_TRACE_EXIT ( SDB__DPSRPCMGR_WRITEDATA );

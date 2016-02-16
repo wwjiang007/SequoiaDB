@@ -45,10 +45,10 @@
 #include "dms.hpp"
 #include "ossAtomic.hpp"
 #include "msg.h"
+#include "../util/fromjson.hpp"
 
 namespace engine
 {
-   #define DPS_TRANS_LOCK_WAIT_TIME          864000000ll    //
    class _pmdEDUCB;
 
    enum DPS_TRANSLOCK_TYPE
@@ -78,7 +78,15 @@ namespace engine
 
       BOOLEAN operator<( const dpsTransLockId &rhs ) const;
 
+      BOOLEAN operator==( const dpsTransLockId &rhs ) const;
+
+      dpsTransLockId & operator=( const dpsTransLockId & rhs ) ;
+
       std::string toString() const;
+
+      bson::BSONObj toBson() const ;
+
+      void reset() ;
    public:
       UINT32               _logicCSID;
       dmsExtentID          _recordExtentID;

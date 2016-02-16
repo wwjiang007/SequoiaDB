@@ -39,7 +39,7 @@
 #include "ossMem.hpp"
 #include "ossUtil.hpp"
 
-#define UTIL_ARRAY_DEFAULT_SIZE 8 
+#define UTIL_ARRAY_DEFAULT_SIZE 4 
 
 namespace engine
 {
@@ -178,7 +178,6 @@ namespace engine
          {
             goto done ;
          }
-
          else if ( UTIL_ARRAY_DEFAULT_SIZE == _bufSize )
          {
             _dynamicBuf = ( T * )SDB_OSS_MALLOC( sizeof( T ) * size ) ;
@@ -226,6 +225,18 @@ namespace engine
          return rc ;
       error:
          goto done ;
+      }
+
+      OSS_INLINE BOOLEAN has( const T &v ) const
+      {
+         for ( UINT32 i = 0; i < _eleSize; ++i )
+         {
+            if ( v == _eles[i] )
+            {
+               return TRUE ;
+            }
+         }
+         return FALSE ;
       }
    private:
       T _staticBuf[UTIL_ARRAY_DEFAULT_SIZE] ;

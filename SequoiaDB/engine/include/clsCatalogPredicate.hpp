@@ -83,7 +83,8 @@ namespace engine
                       bson::BSONObjIterator itrLB,
                       bson::BSONObjIterator itrUB,
                       BOOLEAN & result,
-                      BOOLEAN isCloseInterval ) ;
+                      BOOLEAN isCloseInterval,
+                      INT32 compareLU ) ;
 
    private:
       clsCatalogPredicateTree( clsCatalogPredicateTree &right ){}

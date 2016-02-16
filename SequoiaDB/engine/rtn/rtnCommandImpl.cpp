@@ -1242,7 +1242,8 @@ namespace engine
                                  _pmdEDUCB *cb,
                                  SDB_DMSCB *dmsCB,
                                  SDB_DPSCB *dpsCB,
-                                 BOOLEAN isSys )
+                                 BOOLEAN isSys,
+                                 INT32 sortBufferSize )
    {
       INT32 rc = SDB_OK ;
       PD_TRACE_ENTRY ( SDB_RTNCREATEINDEXCOMMAND ) ;
@@ -1268,7 +1269,7 @@ namespace engine
       writable = TRUE ;
 
       rc = su->createIndex ( pCollectionShortName, indexObj,
-                             cb, dpsCB, isSys ) ;
+                             cb, dpsCB, isSys, NULL, sortBufferSize ) ;
       if ( rc )
       {
          PD_LOG ( PDERROR, "Failed to create index %s: %s, rc: %d",

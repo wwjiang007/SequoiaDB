@@ -238,8 +238,12 @@ namespace engine
                          "Failed to get record, append lock-wait-queue failed, "
                          "rc: %d", rc ) ;
                _context->pause() ;
+               {
+               DPS_TRANS_WAIT_LOCK _transWaitLock( cb, _pSu->logicalID(),
+                                                   _context->mbID(), &_curRID ) ;
                rc = _pTransCB->waitLock( cb, _pSu->logicalID(),
                                          _context->mbID(), &_curRID ) ;
+               }
                PD_RC_CHECK( rc, PDERROR, "Failed to wait record lock, rc: %d",
                             rc ) ;
                rc = _context->resume() ;
@@ -771,8 +775,13 @@ namespace engine
                PD_RC_CHECK( rc, PDERROR, "Failed to pause scan, rc: %d", rc ) ;
 
                _context->pause() ;
+               {
+               
+               DPS_TRANS_WAIT_LOCK _transWaitLock( cb, _pSu->logicalID(),
+                                                   _context->mbID(), &_curRID ) ;
                rc = _pTransCB->waitLock( cb, _pSu->logicalID(),
                                          _context->mbID(), &_curRID ) ;
+               }
                PD_RC_CHECK( rc, PDERROR, "Failed to wait record lock, rc: %d",
                             rc ) ;
                rc = _context->resume() ;

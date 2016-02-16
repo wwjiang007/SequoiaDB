@@ -87,6 +87,9 @@
 #define MAKE_RETURN_INT_PYSTRING_SIZE( ret_value, c_string, c_stringsize ) \
    ( PyObject * )Py_BuildValue( "(i,s#)", ret_value, c_string, c_stringsize )
 
+#define MAKE_RETURN_INT_INT_PYSTRING_SIZE( ret_value, type_value, c_string, c_stringsize ) \
+   ( PyObject * )Py_BuildValue( "(i,i,s#)", ret_value, type_value, c_string, c_stringsize )
+
 #define MAKE_RETURN_INT_INT_INT_INT_STRING( verion, sub_verion, fixed, release, build)\
    ( PyObject * )Py_BuildValue( "(i,i,i,i,s)", version, sub_version, fixed, release, build )
 /*

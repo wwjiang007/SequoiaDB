@@ -585,6 +585,10 @@ zend_register_internal_class( &sequoiaNode TSRMLS_CC ) ;
                             2, CONST_CS | CONST_PERSISTENT ) ;
    REGISTER_LONG_CONSTANT ( "SDB_NODE_UNKNOWN",
                             3, CONST_CS | CONST_PERSISTENT ) ;
+
+   REGISTER_LONG_CONSTANT ( "SDB_INDEX_SORT_BUFFER_DEFAULT_SIZE",
+                            64, CONST_CS | CONST_PERSISTENT ) ;
+
    return SUCCESS;
 }
 
@@ -2098,21 +2102,22 @@ PHP_METHOD ( SequoiaCL, createIndex )
    INT32 rc = SDB_OK ;
    sdbCollection *collection = NULL ;
    CHAR *error = NULL ;
-
    zval *pIndexDef    = NULL ;
+   zval *pSortBufferSize = NULL ;
    CHAR *indexDef     = NULL ;
    CHAR *pName        = NULL ;
    INT32 pName_len    = 0    ;
+   INT32 sortBufferSize = 64 ;
    BOOLEAN isUnique   = FALSE ;
    BOOLEAN isEnforced = FALSE ;
-
    if ( zend_parse_parameters ( ZEND_NUM_ARGS () TSRMLS_CC,
-                                "zs|bb",
+                                "zs|bbz",
                                 &pIndexDef,
                                 &pName,
                                 &pName_len,
                                 &isUnique,
-                                &isEnforced ) == FAILURE )
+                                &isEnforced,
+                                &pSortBufferSize ) == FAILURE )
    {
       SETERROR ( getThis(), SDB_PHP_DRIVER_INTERNAL_ERROR ) ;
       PRINTFERROR ( SDB_PHP_DRIVER_INTERNAL_ERROR, error ) ;
@@ -2125,15 +2130,32 @@ PHP_METHOD ( SequoiaCL, createIndex )
       PRINTFERROR ( SDB_PHP_DRIVER_INTERNAL_ERROR, error ) ;
       RETURN_ARRAY_STRING ( getThis(), error, 0 ) ;
    }
-
    if ( !php_toJson ( &indexDef, pIndexDef TSRMLS_CC ) )
    {
       SETERROR ( getThis(), SDB_INVALIDARG ) ;
       PRINTFERROR ( SDB_INVALIDARG, error ) ;
       RETURN_ARRAY_STRING ( getThis(), error, 0 ) ;
    }
-
-   rc = createIndex ( collection, indexDef, pName, isUnique, isEnforced ) ;
+   if ( pSortBufferSize )
+   {
+      if ( IS_LONG == Z_TYPE_P ( pSortBufferSize ) )
+      {
+         sortBufferSize = Z_LVAL_P ( pSortBufferSize ) ;
+      }
+      else
+      {
+         SETERROR ( getThis(), SDB_INVALIDARG ) ;
+         PRINTFERROR ( SDB_INVALIDARG, error ) ;
+         RETURN_ARRAY_STRING ( getThis(), error, 0 ) ;
+      }
+   }
+   if( sortBufferSize < 0 )
+   {
+      SETERROR ( getThis(), SDB_INVALIDARG ) ;
+      PRINTFERROR ( SDB_INVALIDARG, error ) ;
+      RETURN_ARRAY_STRING ( getThis(), error, 0 ) ;
+   }
+   rc = createIndex ( collection, indexDef, pName, isUnique, isEnforced, sortBufferSize ) ;
    SETERROR ( getThis(), rc ) ;
    PRINTFERROR ( rc, error ) ;
    RETURN_ARRAY_STRING ( getThis(), error, 0 ) ;

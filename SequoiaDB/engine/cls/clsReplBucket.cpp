@@ -867,6 +867,7 @@ namespace engine
 
          _memPool.release( tmpInfo._pData, tmpInfo._len ) ;
          _allCount.dec() ;
+         ++it ;
       }
       _completeMap.clear() ;
       _submitEvent.signal() ;

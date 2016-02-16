@@ -367,7 +367,7 @@ namespace engine
             goto error ;
          }
 
-         rc = transCB->reservedLogSpace( logRecord.head()._length ) ;
+         rc = transCB->reservedLogSpace( logRecord.head()._length, cb ) ;
          if ( rc )
          {
             PD_LOG( PDERROR, "failed to reserved log space(length=%u)",
@@ -471,7 +471,7 @@ namespace engine
 
       if ( 0 != logRecord.head()._length )
       {
-         transCB->releaseLogSpace( logRecord.head()._length ) ;
+         transCB->releaseLogSpace( logRecord.head()._length, cb ) ;
       }
 
       PD_TRACE_EXITRC( SDB__DMSSTORAGELOB_WRITE, rc ) ;
@@ -602,7 +602,7 @@ namespace engine
             goto error ;
          }
 
-         rc = transCB->reservedLogSpace( logRecord.head()._length ) ;
+         rc = transCB->reservedLogSpace( logRecord.head()._length, cb ) ;
          if ( rc )
          {
             PD_LOG( PDERROR, "failed to reserved log space(length=%u)",
@@ -650,7 +650,7 @@ namespace engine
 
       if ( 0 != logRecord.head()._length )
       {
-         transCB->releaseLogSpace( logRecord.head()._length ) ;
+         transCB->releaseLogSpace( logRecord.head()._length, cb ) ;
       }
       PD_TRACE_EXITRC( SDB__DMSSTORAGELOB_UPDATE, rc ) ;
       return rc ;
@@ -901,7 +901,7 @@ namespace engine
             goto error ;
          }
 
-         rc = transCB->reservedLogSpace( logRecord.head()._length ) ;
+         rc = transCB->reservedLogSpace( logRecord.head()._length, cb ) ;
          if ( rc )
          {
             PD_LOG( PDERROR, "failed to reserved log space(length=%u)",
@@ -945,7 +945,7 @@ namespace engine
 
       if ( 0 != logRecord.head()._length )
       {
-         transCB->releaseLogSpace( logRecord.head()._length ) ;
+         transCB->releaseLogSpace( logRecord.head()._length, cb ) ;
       }
       PD_TRACE_EXITRC( SDB__DMSSTORAGELOB_REMOVE, rc ) ;
       return rc ;
@@ -1482,7 +1482,7 @@ namespace engine
             goto error ;
          }
 
-         rc = transCB->reservedLogSpace( logRecord.head()._length ) ;
+         rc = transCB->reservedLogSpace( logRecord.head()._length, cb ) ;
          if ( rc )
          {
             PD_LOG( PDERROR, "failed to reserved log space(length=%u)",
@@ -1557,7 +1557,7 @@ namespace engine
 
       if ( 0 != logRecord.head()._length )
       {
-         transCB->releaseLogSpace( logRecord.head()._length ) ;
+         transCB->releaseLogSpace( logRecord.head()._length, cb ) ;
       }
       PD_TRACE_EXITRC( SDB__DMSSTORAGELOB_TRUNCATE, rc ) ;
       return rc ;

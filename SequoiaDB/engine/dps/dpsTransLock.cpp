@@ -114,8 +114,11 @@ namespace engine
          rc = getBucket( lockId, pLockBucket );
          PD_RC_CHECK( rc, PDERROR, "Failed to get the lock-bucket, "
                       "get X-lock failed(rc=%d)", rc );
+         {
+         DPS_TRANS_WAIT_LOCK _transWaitLock( eduCB, lockId ) ;
          eduCB->addLockInfo( lockId, DPS_TRANSLOCK_X );
          rc = pLockBucket->acquire( eduCB, lockId, DPS_TRANSLOCK_X );
+         }
          if ( rc )
          {
             eduCB->delLockInfo( lockId );
@@ -186,8 +189,11 @@ namespace engine
          rc = getBucket( lockId, pLockBucket );
          PD_RC_CHECK( rc, PDERROR, "Failed to get the lock-bucket, "
                       "get S-lock failed(rc=%d)", rc );
+         {
+         DPS_TRANS_WAIT_LOCK _transWaitLock( eduCB, lockId ) ;
          eduCB->addLockInfo( lockId, DPS_TRANSLOCK_S);
          rc = pLockBucket->acquire( eduCB, lockId, DPS_TRANSLOCK_S );
+         }
          if ( rc )
          {
             eduCB->delLockInfo( lockId );
@@ -253,8 +259,11 @@ namespace engine
          PD_RC_CHECK( rc, PDERROR, "Failed to get the lock-bucket, "
                       "get IX-lock failed(rc=%d)", rc );
 
+         {
+         DPS_TRANS_WAIT_LOCK _transWaitLock( eduCB, lockId ) ;
          eduCB->addLockInfo( lockId, DPS_TRANSLOCK_IX );
          rc = pLockBucket->acquire( eduCB, lockId, DPS_TRANSLOCK_IX );
+         }
          if ( rc )
          {
             eduCB->delLockInfo( lockId );
@@ -310,8 +319,11 @@ namespace engine
       PD_RC_CHECK( rc, PDERROR, "Failed to get the lock-bucket, "
                    "get IS-lock failed(rc=%d)", rc );
 
+      {
+      DPS_TRANS_WAIT_LOCK _transWaitLock( eduCB, lockId ) ;
       eduCB->addLockInfo( lockId, DPS_TRANSLOCK_IS );
       rc = pLockBucket->acquire( eduCB, lockId, DPS_TRANSLOCK_IS );
+      }
       if ( rc )
       {
          eduCB->delLockInfo( lockId );
@@ -405,9 +417,11 @@ namespace engine
          {
             pLockBucket->release( eduCB, iterLst->first );
          }
+
          SDB_OSS_DEL iterLst->second;
          pLockLst->erase( iterLst++ );
       }
+      eduCB->clearLockList() ;
       PD_TRACE_EXIT ( SDB_DPSTRANSLOCK_RELEASEALL );
       return ;
    }
@@ -1148,6 +1162,36 @@ namespace engine
    done:
       PD_TRACE_EXIT ( SDB_DPSTRANSLOCK_HASWAIT );
       return result ;
+   }
+
+   DPS_TRANS_WAIT_LOCK::DPS_TRANS_WAIT_LOCK( _pmdEDUCB *eduCB, const dpsTransLockId & lockId )
+   {
+      if ( eduCB != NULL )
+      {
+         _eduCB = eduCB ;
+         _eduCB->setWaitLock( lockId ) ;
+      }
+   }
+
+   DPS_TRANS_WAIT_LOCK::DPS_TRANS_WAIT_LOCK( _pmdEDUCB *eduCB, UINT32 logicCSID,
+                                             UINT16 collectionID,
+                                             const _dmsRecordID *recordID )
+   {
+      if ( eduCB != NULL )
+      {
+         _eduCB = eduCB ;
+         dpsTransLockId lockId( logicCSID, collectionID, recordID ) ;
+         _eduCB->setWaitLock( lockId ) ;
+      }
+   }
+
+   DPS_TRANS_WAIT_LOCK::~DPS_TRANS_WAIT_LOCK()
+   {
+      if ( _eduCB != NULL )
+      {
+         _eduCB->clearWaitLock() ;
+         _eduCB = NULL ;
+      }
    }
 
 }

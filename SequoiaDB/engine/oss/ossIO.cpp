@@ -517,6 +517,14 @@ INT32 ossDelete ( const CHAR *pPathName )
                                     "Invalid file type" ) ;
       }
    }
+   catch ( fs::filesystem_error& e )
+   {
+      if ( e.code() == boost::system::errc::permission_denied )
+         rc = SDB_PERM ;
+      else
+         rc = SDB_IO ;
+      goto error ;
+   }
    catch ( std::exception &e )
    {
       PD_LOG ( PDERROR, "Failed to remove file or dir: %s", e.what() ) ;
@@ -1714,9 +1722,8 @@ INT32 ossExtendFile ( OSSFILE *pFile,
       while ( reminderloop )
       {
          rc = ossWrite ( pFile, pBuffer, reminderloop, &lenWritten ) ;
-         PD_RC_CHECK ( rc, PDERROR,
-                                   "Failed to extend file, errno = %d",
-                                   ossGetLastError() ) ;
+         PD_RC_CHECK ( rc, PDERROR, "Failed to extend file, errno = %d",
+                       ossGetLastError() ) ;
          reminderloop -= lenWritten ;
       }
    }
@@ -1727,9 +1734,8 @@ INT32 ossExtendFile ( OSSFILE *pFile,
       while ( reminderloop )
       {
          rc = ossWrite ( pFile, pBuffer, reminderloop, &lenWritten ) ;
-         PD_RC_CHECK ( rc, PDERROR,
-                                   "Failed to extend file, errno = %d",
-                                   ossGetLastError() ) ;
+         PD_RC_CHECK ( rc, PDERROR, "Failed to extend file, errno = %d",
+                       ossGetLastError() ) ;
          reminderloop -= lenWritten ;
       	}
    }

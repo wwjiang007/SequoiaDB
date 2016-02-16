@@ -745,6 +745,17 @@ namespace engine
       }
    }
 
+   
+   void _pmdEDUCB::setWaitLock( const dpsTransLockId &lockId )
+   {
+      _waitLock = lockId ;
+   }
+
+   void _pmdEDUCB::clearWaitLock()
+   {
+      _waitLock.reset() ;
+   }
+
    // PD_TRACE_DECLARE_FUNCTION ( SDB___PMDEDUCB_DUMPINFO, "_pmdEDUCB::dumpInfo" )
    void _pmdEDUCB::dumpInfo ( monEDUSimple &simple )
    {
@@ -808,6 +819,7 @@ namespace engine
       pLockInfo = SDB_OSS_NEW dpsTransCBLockInfo( lockType );
       if ( pLockInfo )
       {
+         ossScopedLock _lock( &_transLockLstMutex ) ;
          _transLockLst[ lockId ] = pLockInfo ;
       }
       PD_TRACE_EXIT ( SDB__PMDEDUCB_ADDLOCKINFO );
@@ -817,6 +829,7 @@ namespace engine
    void _pmdEDUCB::delLockInfo( const dpsTransLockId &lockId )
    {
       PD_TRACE_ENTRY ( SDB__PMDEDUCB_DELLOCKINFO );
+      ossScopedLock _lock( &_transLockLstMutex ) ;
       DpsTransCBLockList::iterator iter
                         = _transLockLst.find( lockId );
       if ( iter != _transLockLst.end() )
@@ -830,6 +843,17 @@ namespace engine
    DpsTransCBLockList *_pmdEDUCB::getLockList()
    {
       return &_transLockLst;
+   }
+
+   void _pmdEDUCB::clearLockList()
+   {
+      ossScopedLock _lock( &_transLockLstMutex ) ;
+      DpsTransCBLockList::iterator iterLst = _transLockLst.begin();
+      while ( iterLst != _transLockLst.end() )
+      {
+         SDB_OSS_DEL iterLst->second;
+         _transLockLst.erase( iterLst++ );
+      }
    }
 
    // PD_TRACE_DECLARE_FUNCTION ( SDB__PMDEDUCB_CREATETRANSACTION, "_pmdEDUCB::createTransaction" )
@@ -905,7 +929,8 @@ namespace engine
       if ( _pTransNodeMap )
       {
          iterMap = _pTransNodeMap->find( routeID.columns.groupID );
-         if (  iterMap != _pTransNodeMap->end() )
+         if (  iterMap != _pTransNodeMap->end()
+               && iterMap->second.value == routeID.value )
          {
             isTransNode = TRUE;
          }
@@ -956,6 +981,20 @@ namespace engine
 
       return ;
    }
+
+   void _pmdEDUCB::dumpTransInfo( monTransInfo &transInfo )
+   {
+      transInfo._eduID        = _eduID ;
+      transInfo._transID      = _curTransID ;
+      transInfo._curTransLsn  = _curTransLSN ;
+      {
+      ossScopedLock _lock( &_transLockLstMutex ) ;
+      transInfo._lockList     = _transLockLst ;
+      }
+      transInfo._locksNum     = transInfo._lockList.size() ;
+      transInfo._waitLock     = _waitLock ;
+   }
+
 #endif // SDB_ENGINE
 
    /*

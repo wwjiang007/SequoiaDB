@@ -299,6 +299,7 @@ namespace engine
       PMD_SHUTDOWN_DB( rc ) ;
       pmdSetQuit() ;
       krcb->destroy () ;
+      rc = krcb->getExitCode() ;
       if ( krcb->needRestart() )
       {
          pmdGetStartup().restart( TRUE, rc ) ;

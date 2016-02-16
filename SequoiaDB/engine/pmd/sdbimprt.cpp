@@ -177,8 +177,8 @@ namespace engine
    #define EXPLAIN_INSERTNUM        "batch insert records number, minimun 1, maximum 100000, default: 100"
    #define EXPLAIN_FILENAME         "input file name"
    #define EXPLAIN_TYPE             "type of file to load, default: csv (json,csv)"
-   #define EXPLAIN_FIELDS           "field name, separated by comma (',')(e.g. \"--fields name,age\"). "\
-                                    "field type and default value can be specified for csv input (e.g. \"--fields name string,age int default 18\")"
+   #define EXPLAIN_FIELDS           "field name, separated by comma (',')(e.g. --fields \"name,age\"). "\
+                                    "field type and default value can be specified for csv input (e.g. --fields \"name string,age int default 18\")"
    #define EXPLAIN_HEADERLINE       "for csv input, whether the first line defines field name. if --fields is defined, the first line will be ignored if this options is true"
    #define EXPLAIN_SPARSE           "for csv input, whether to add missing field, default: true"
    #define EXPLAIN_EXTRA            "for csv input, whether to add missing value, default: false"

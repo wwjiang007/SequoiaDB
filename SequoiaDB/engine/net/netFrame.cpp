@@ -136,7 +136,7 @@ namespace engine
       beat.messageLength = sizeof( MsgHeader ) ;
       beat.opCode = MSG_HEARTBEAT ;
       beat.requestID = 0 ;
-      beat.routeID.value = 0 ;
+      beat.routeID.value = _local.value ;
       beat.TID = 0 ;
 
       while( TRUE )
@@ -155,6 +155,7 @@ namespace engine
          if ( pmdGetTickSpanTime( eh->getLastBeatTick() ) >= _beatInterval )
          {
             eh->mtx().get() ;
+            beat.requestID = eh->getAndIncMsgID() ;
             eh->syncSend( (const void*)&beat, beat.messageLength ) ;
             eh->syncLastBeatTick() ;
             eh->mtx().release() ;
@@ -216,6 +217,13 @@ namespace engine
          _beatLastTick = pmdGetDBTick() ;
          _checkBeat = TRUE ;
          _heartbeat() ;
+
+         if ( spanTime > 3 * _beatInterval )
+         {
+            PD_LOG( PDWARNING, "Heartbeat span time[%u] is more than "
+                    "interval time[%u], the thread maybe blocked by "
+                    "some operations", spanTime, _beatInterval ) ;
+         }
       }
    }
 
@@ -579,14 +587,19 @@ namespace engine
             itr != iov.end();
             itr++ )
       {
-         rc = eh->syncSend( itr->iovBase, itr->iovLen ) ;
-         if ( SDB_OK != rc )
+         SDB_ASSERT( NULL != itr->iovBase, "should not be NULL" ) ;
+
+         if ( itr->iovBase )
          {
-            eh->mtx().release() ;
-            eh->close() ;
-            goto error ;
+            rc = eh->syncSend( itr->iovBase, itr->iovLen ) ;
+            if ( SDB_OK != rc )
+            {
+               eh->mtx().release() ;
+               eh->close() ;
+               goto error ;
+            }
+            _netOut.add( itr->iovLen ) ;
          }
-         _netOut.add( itr->iovLen ) ;
       }
       eh->mtx().release() ;
 
@@ -718,14 +731,19 @@ namespace engine
             itr != iov.end();
             itr++ )
       {
-         rc = eh->syncSend( itr->iovBase, itr->iovLen ) ;
-         if ( SDB_OK != rc )
+         SDB_ASSERT( NULL != itr->iovBase, "should not be NULL" ) ;
+
+         if ( itr->iovBase && itr->iovLen > 0 )
          {
-            eh->mtx().release() ;
-            eh->close() ;
-            goto error ;
+            rc = eh->syncSend( itr->iovBase, itr->iovLen ) ;
+            if ( SDB_OK != rc )
+            {
+               eh->mtx().release() ;
+               eh->close() ;
+               goto error ;
+            }
+            _netOut.add( itr->iovLen ) ;
          }
-         _netOut.add( itr->iovLen ) ;
       }
 
       eh->mtx().release() ;
@@ -882,6 +900,7 @@ namespace engine
          reply.flags = pmdDBIsAbnormal() ? SDB_SYS : SDB_OK ;
 
          eh->mtx().get() ;
+         reply.header.routeID = _local ;
          eh->syncSend( (const void*)&reply, reply.header.messageLength ) ;
          eh->mtx().release() ;
       }

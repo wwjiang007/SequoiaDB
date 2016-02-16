@@ -259,6 +259,11 @@
 #define FIELD_NAME_DATA                      "Data"
 #define FIELD_NAME_DATALEN                   "DataLen"
 #define FIELD_NAME_ORG_LSNOFFSET             "OrgOffset"
+#define FIELD_NAME_TRANSACTION_ID            "TransactionID"
+#define FIELD_NAME_TRANS_LSN_CUR             "CurrentTransLSN"
+#define FIELD_NAME_TRANS_LOCKS_NUM           "TransactionLocksNum"
+#define FIELD_NAME_TRANS_LOCKS               "GotLocks"
+#define FIELD_NAME_TRANS_WAIT_LOCK           "WaitLock"
 
 #define FIELD_NAME_INSERT                    "Insert"
 #define FIELD_NAME_UPDATE                    "Update"
@@ -325,6 +330,7 @@
 #define IXM_FIELD_NAME_INDEX_DEF             "IndexDef"
 #define IXM_FIELD_NAME_INDEX_FLAG            "IndexFlag"
 #define IXM_FIELD_NAME_SCAN_EXTLID           "ScanExtentLID"
+#define IXM_FIELD_NAME_SORT_BUFFER_SIZE      "SortBufferSize"
 
 #define CMD_NAME_ENFORCED                    "enforced"
 
@@ -370,6 +376,8 @@
 #define CMD_NAME_SNAPSHOT_COLLECTIONS        "snapshot collections"
 #define CMD_NAME_SNAPSHOT_COLLECTIONSPACES   "snapshot collectionspaces"
 #define CMD_NAME_SNAPSHOT_CATA               "snapshot catalog"
+#define CMD_NAME_SNAPSHOT_TRANSACTIONS_CUR   "snapshot transactions current"
+#define CMD_NAME_SNAPSHOT_TRANSACTIONS       "snapshot transactions"
 #define CMD_NAME_TEST_COLLECTION             "test collection"
 #define CMD_NAME_TEST_COLLECTIONSPACE        "test collectionspace"
 #define CMD_NAME_CREATE_GROUP                "create group"
@@ -450,6 +458,8 @@
 #define DATA_GROUP_ID_BEGIN                  1000
 #define DATA_GROUP_ID_END                    ( 60000 + DATA_GROUP_ID_BEGIN )
 #define CATA_NODE_MAX_NUM                    CLS_REPLSET_MAX_NODE_SIZE
+
+#define SDB_INDEX_SORT_BUFFER_DEFAULT_SIZE   64
 
 #define SDB_ROLE_DATA_STR                    "data"
 #define SDB_ROLE_COORD_STR                   "coord"

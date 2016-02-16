@@ -160,22 +160,30 @@ namespace engine
          if ( !str.empty() )
          {
             utilSplitIterator i( ( CHAR * )( str.c_str() ) ) ;
+            INT32 pos = 0 ;
             while ( i.more() )
             {
+               if ( 0 == pos )
+               {
+                  ++pos ;
+               }
+               else
+               {
+                  ss << "." ;
+               }
+
                const CHAR *left = i.next() ;
                if ( '$' == *left && '[' == *(left + 1) )
                {
                   INT32 n = 0 ;
                   mthConvertSubElemToNumeric( left, n ) ;
-                  ss << n << '.';
+                  ss << n ;
                }
                else
                {
-                  ss << left << '.' ;
+                  ss << left ;
                }
             }
-            ss.seekp( (INT32)ss.tellp() - 1 ) ;
-            ss << '\0' ;
          }
          return ss.str() ;
       }

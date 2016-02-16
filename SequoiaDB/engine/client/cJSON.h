@@ -102,6 +102,7 @@ extern "C"
 #define CJSON_OP_PUSH      "$push"
 #define CJSON_OP_REGEX     "$regex"
 #define CJSON_OP_RENAME    "$rename"
+#define CJSON_OP_REPLACE   "$replace"
 #define CJSON_OP_SET       "$set"
 #define CJSON_OP_SIZE      "$size"
 #define CJSON_OP_TYPE      "$type"
@@ -121,8 +122,14 @@ extern "C"
 #define CJSON_OP_AVG       "$avg"
 #define CJSON_OP_SORT      "$sort"
 #define CJSON_OP_MERGEARRAYSET   "$mergearrayset"
-#define CJSON_INNER_META   "$Meta"
 
+#define CJSON_INNER_META         "$Meta"
+#define CJSON_INNER_AGGR         "$Aggr"
+#define CJSON_INNER_SETONINSERT  "$SetOnInsert"
+#define CJSON_INNER_MODIFY       "$Modify"
+
+#define CJSON_INT64_MAX_10 922337203685477580
+#define CSJON_INT64_MAX_Last 7
 
 /* The cJSON structure: */
 typedef struct cJSON {

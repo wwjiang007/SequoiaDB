@@ -218,7 +218,8 @@ namespace engine
                                              BSONObjIterator itrLB,
                                              BSONObjIterator itrUB,
                                              BOOLEAN &result,
-                                             BOOLEAN isCloseInterval )
+                                             BOOLEAN isCloseInterval,
+                                             INT32 compareLU )
    {
       INT32 rc = SDB_OK ;
       UINT32 ssKeyPos = 0 ;
@@ -271,30 +272,39 @@ namespace engine
          const rtnStartStopKey &matcherBound =
             itr->second._startStopKeys[ ssKeyPos ] ;
 
-         rsCmp = rtnKeyCompare( lowBound, matcherBound._stopKey._bound ) ;
-         if ( rsCmp > 0 || ( rsCmp == 0 &&
-              !matcherBound._stopKey._inclusive ) )
+         if ( compareLU <= 0 )
          {
-            ++ssKeyPos ;
-            goto retry ;
-         }
-         else if ( rsCmp == 0 )
-         {
-            rc = _matches( itrSK, itrLB, itrUB, result, TRUE ) ;
-            goto done ;
+            rsCmp = rtnKeyCompare( lowBound, matcherBound._stopKey._bound ) ;
+            if ( rsCmp > 0 || ( rsCmp == 0 &&
+                 !matcherBound._stopKey._inclusive ) )
+            {
+               ++ssKeyPos ;
+               goto retry ;
+            }
+            else if ( rsCmp == 0 )
+            {
+               rc = _matches( itrSK, itrLB, itrUB, result, TRUE, -1 ) ;
+               if ( compareLU < 0 )
+               {
+                  goto done ;
+               }
+            }
          }
 
-         rsCmp = rtnKeyCompare( upBound, matcherBound._startKey._bound ) ;
-         if ( rsCmp < 0 || ( rsCmp == 0 &&
-              !matcherBound._startKey._inclusive ) )
+         if ( 0 <= compareLU )
          {
-            ++ssKeyPos ;
-            goto retry ;
-         }
-         else if ( rsCmp == 0 )
-         {
-            rc = _matches( itrSK, itrLB, itrUB, result, isCloseInterval ) ;
-            goto done ;
+            rsCmp = rtnKeyCompare( upBound, matcherBound._startKey._bound ) ;
+            if ( rsCmp < 0 || ( rsCmp == 0 &&
+                 !matcherBound._startKey._inclusive ) )
+            {
+               ++ssKeyPos ;
+               goto retry ;
+            }
+            else if ( rsCmp == 0 )
+            {
+               rc = _matches( itrSK, itrLB, itrUB, result, isCloseInterval, 1 ) ;
+               goto done ;
+            }
          }
       }
 
@@ -321,7 +331,7 @@ namespace engine
          BSONObjIterator itrLB( pCatalogItem->getLowBound() ) ;
          BSONObjIterator itrUB( pCatalogItem->getUpBound() ) ;
 
-         rc = _matches( itrSK, itrLB, itrUB, rsTmp, pCatalogItem->isLast() ) ;
+         rc = _matches( itrSK, itrLB, itrUB, rsTmp, pCatalogItem->isLast(), 0 ) ;
          PD_RC_CHECK( rc, PDERROR, "Failed to match catalog item, rc: %d",
                       rc ) ;
 

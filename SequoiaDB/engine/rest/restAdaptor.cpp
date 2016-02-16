@@ -326,13 +326,21 @@ namespace engine
 
    PD_TRACE_DECLARE_FUNCTION( SDB__RESTADP_PARQUERY, "restAdaptor::_parse_http_query" )
    INT32 restAdaptor::_parse_http_query( httpConnection *pHttpConnection,
-                                         CHAR *pBuffer, INT32 length )
+                                         CHAR *pBuffer, INT32 length,
+                                         CHAR *pDecodeBuff, INT32 decodeLen )
    {
       INT32 rc = SDB_OK ;
       PD_TRACE_ENTRY( SDB__RESTADP_PARQUERY ) ;
+      INT32 keyLen      = 0 ;
+      INT32 valueLen    = 0 ;
       INT32 keyOffset   = 0 ;
       INT32 valueOffset = 0 ;
-      const CHAR *pValueBuf = NULL ;
+      INT32 useLen      = 0 ;
+      INT32 tempDecodeLen = 0 ;
+      CHAR *pKeyBuf = NULL ;
+      CHAR *pValueBuf = NULL ;
+      CHAR *pDecodeKeyBuf = NULL ;
+      CHAR *pDecodeValueBuf = NULL ;
 
       for ( INT32 i = 0; i < length; ++i )
       {
@@ -344,7 +352,7 @@ namespace engine
          }
          else if ( pBuffer[i] == '&' || ( i + 1 == length ) )
          {
-            if ( i + 1 == length )
+            if( i + 1 == length )
             {
                pBuffer[i+1] = 0 ;
             }
@@ -352,9 +360,34 @@ namespace engine
             {
                pBuffer[i] = 0 ;
             }
+            pKeyBuf = pBuffer + keyOffset ;
+            keyLen = valueOffset - keyOffset - 1 ;
+            valueLen = i - valueOffset ;
+            if( i + 1 == length )
+            {
+               ++valueLen ;
+            }
+            pDecodeKeyBuf = pDecodeBuff + useLen ;
+            tempDecodeLen = urlDecodeSize( pKeyBuf, keyLen ) ;
+            urlDecode( pKeyBuf, keyLen,
+                       &pDecodeKeyBuf, tempDecodeLen ) ;
+            useLen += tempDecodeLen ;
+            pDecodeBuff[useLen] = 0 ;
+            ++useLen ;
+            if( pValueBuf )
+            {
+               pDecodeValueBuf = pDecodeBuff + useLen ;
+               tempDecodeLen = urlDecodeSize( pValueBuf, valueLen ) ;
+               urlDecode( pValueBuf, valueLen,
+                          &pDecodeValueBuf, tempDecodeLen ) ;
+               useLen += tempDecodeLen ;
+               pDecodeBuff[useLen] = 0 ;
+               ++useLen ;
+            }
             pHttpConnection->_requestQuery.insert(
-                  std::make_pair(pBuffer + keyOffset, pValueBuf) ) ;
+                     std::make_pair( pDecodeKeyBuf, pDecodeValueBuf ) ) ;
             pValueBuf = NULL ;
+            pDecodeValueBuf = NULL ;
             keyOffset = i + 1 ;
          }
       }
@@ -735,10 +768,12 @@ namespace engine
                      urlSize + 1, rc ) ;
             goto error ;
          }
-         urlDecode( pHttpCon->_pQuery, pHttpCon->_querySize,
-                    &pUrl, urlSize ) ;
          pUrl[ urlSize ] = 0 ;
-         _parse_http_query( pHttpCon, pUrl, urlSize ) ;
+         _parse_http_query( pHttpCon,
+                            pHttpCon->_pQuery,
+                            pHttpCon->_querySize,
+                            pUrl,
+                            urlSize ) ;
       }
    done:
       PD_TRACE_EXITRC( SDB__RESTADP_RECVREQHE, rc ) ;
@@ -830,10 +865,9 @@ namespace engine
                         urlSize + 1, rc ) ;
                goto error ;
             }
-            urlDecode( pBuffer, receivedSize,
-                       &pUrl, urlSize ) ;
             pUrl[ urlSize ] = 0 ;
-            _parse_http_query( pHttpCon, pUrl, urlSize ) ;
+            _parse_http_query( pHttpCon, pBuffer, receivedSize,
+                               pUrl, urlSize ) ;
          }
       }
 
@@ -1454,8 +1488,8 @@ namespace engine
 
    PD_TRACE_DECLARE_FUNCTION( SDB__RESTADP_GETQUERY, "restAdaptor::getQuery" )
    void restAdaptor::getQuery( pmdRestSession *pSession,
-                                   const CHAR *pKey,
-                                   const CHAR **ppValue )
+                               const CHAR *pKey,
+                               const CHAR **ppValue )
    {
       PD_TRACE_ENTRY( SDB__RESTADP_GETQUERY ) ;
       SDB_ASSERT ( pSession, "pSession is NULL" ) ;
@@ -1467,7 +1501,7 @@ namespace engine
    }
 
    PD_TRACE_DECLARE_FUNCTION( SDB__RESTADP_CLEARHTTPBODY, "restAdaptor::clearHtttpBody" )
-   void clearHtttpBody( pmdRestSession *pSession )
+   void restAdaptor::clearHtttpBody( pmdRestSession *pSession )
    {
       PD_TRACE_ENTRY( SDB__RESTADP_CLEARHTTPBODY ) ;
       SDB_ASSERT ( pSession, "pSession is NULL" ) ;

@@ -217,7 +217,7 @@ namespace engine
          {
             INT32 result = in.numberInt() + elt.numberInt() ;
             INT64 result64 = (INT64)in.numberInt() + (INT64)elt.numberInt() ;
-            if ( (result64<0 && result>0) || (result64>0 && result<0))
+            if ( result64 != (INT64)result )
             {
                bb.append ( in.fieldName(), in.numberLong() + elt.numberLong()) ;
                ADD_CHG_NUMBER ( _dstChgBuilder, pRoot,

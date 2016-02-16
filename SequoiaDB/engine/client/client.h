@@ -47,6 +47,8 @@ enum SDB_SNAP_TYPE
    SDB_SNAP_DATABASE         , /**< Get the snapshot of the database */
    SDB_SNAP_SYSTEM           , /**< Get the snapshot of the system */
    SDB_SNAP_CATALOG          , /**< Get the snapshot of the catalog */
+   SDB_SNAP_TRANSACTION_CURRENT, /**< Get the snapshot of current transaction */
+   SDB_SNAP_TRANSACTION,       /**< Get the snapshot of all the transactions */
    
    SDB_SNAP_END /**< Not a snapshot type, just use to mark the end of current enum */
 };
@@ -1105,6 +1107,31 @@ SDB_EXPORT INT32 sdbCreateIndex ( sdbCollectionHandle cHandle,
                                   const CHAR *pIndexName,
                                   BOOLEAN isUnique,
                                   BOOLEAN isEnforced ) ;
+
+/** \fn INT32 sdbCreateIndex1 ( sdbCollectionHandle cHandle,
+                                bson *indexDef,
+                                const CHAR *pIndexName,
+                                BOOLEAN isUnique,
+                                BOOLEAN isEnforced,
+                                INT32 sortBufferSize )
+    \brief Create the index in current collection
+    \param [in] cHandle The collection handle
+    \param [in] indexDef The bson structure of index element, e.g. {name:1, age:-1}
+    \param [in] pIndexName The index name
+    \param [in] isUnique Whether the index elements are unique or not
+    \param [in] isEnforced Whether the index is enforced unique
+                           This element is meaningful when isUnique is set to true
+    \param [in] sortBufferSize The size of sort buffer used when creating index, the unit is MB,
+                               zero means don't use sort buffer
+    \retval SDB_OK Operation Success
+    \retval Others Operation Fail
+*/
+SDB_EXPORT INT32 sdbCreateIndex1 ( sdbCollectionHandle cHandle,
+                                   bson *indexDef,
+                                   const CHAR *pIndexName,
+                                   BOOLEAN isUnique,
+                                   BOOLEAN isEnforced,
+                                   INT32 sortBufferSize ) ;
 
 /** \fn INT32 sdbGetIndexes ( sdbCollectionHandle cHandle,
                               const CHAR *pIndexName,

@@ -576,7 +576,8 @@ namespace engine
    // PD_TRACE_DECLARE_FUNCTION ( SDB__DMSSU_CREATEINDEX, "_dmsStorageUnit::createIndex" )
    INT32 _dmsStorageUnit::createIndex( const CHAR *pName, const BSONObj &index,
                                        pmdEDUCB *cb, SDB_DPSCB *dpscb,
-                                       BOOLEAN isSys, dmsMBContext * context )
+                                       BOOLEAN isSys, dmsMBContext * context,
+                                       INT32 sortBufferSize )
    {
       INT32 rc                     = SDB_OK ;
       BOOLEAN getContext           = FALSE ;
@@ -591,7 +592,7 @@ namespace engine
          getContext = TRUE ;
       }
 
-      rc = _pIndexSu->createIndex( context, index, cb, dpscb, isSys ) ;
+      rc = _pIndexSu->createIndex( context, index, cb, dpscb, isSys, sortBufferSize ) ;
       if ( rc )
       {
          goto error ;

@@ -368,7 +368,7 @@ namespace engine
       {
          PD_CHECK( bKey.firstElement().numberInt() <
                    groupUpBound.firstElement().numberInt() &&
-                   bKey.firstElement().numberInt() >= 0, SDB_SYS,
+                   bKey.firstElement().numberInt() >= 0, SDB_INVALIDARG,
                    error, PDERROR, "Init split task failed, catalog info: %s, "
                    "source group id: %d, bKey: %s",
                    cataSet.toCataInfoBson().toString().c_str(), sourceID,
@@ -377,8 +377,8 @@ namespace engine
       else
       {
          PD_CHECK( bKey.woCompare( groupUpBound, _shardingKey, false ) < 0,
-                   SDB_SYS, error, PDERROR, "Init split task failed, catalog "
-                   "info : %s, source group id: %d, bKey: %s",
+                   SDB_INVALIDARG, error, PDERROR, "Init split task failed, "
+                   "catalog info : %s, source group id: %d, bKey: %s",
                    cataSet.toCataInfoBson().toString().c_str(), sourceID,
                    bKey.toString().c_str() ) ;
       }

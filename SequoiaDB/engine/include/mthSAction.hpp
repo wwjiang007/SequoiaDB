@@ -40,10 +40,11 @@
 #include "mthSActionFunc.hpp"
 #include "ossUtil.hpp"
 #include "mthMatcher.hpp"
+#include <boost/noncopyable.hpp>
 
 namespace engine
 {
-   class _mthSAction : public SDBObject
+   class _mthSAction : public SDBObject, boost::noncopyable
    {
    public:
       _mthSAction() ;
@@ -123,6 +124,7 @@ namespace engine
          _value = bson::BSONElement() ;
          _name = NULL ;
          _attribute = MTH_S_ATTR_NONE ;
+         SAFE_OSS_DELETE( _matcher ) ;
          return ;
       }
 
@@ -133,7 +135,11 @@ namespace engine
 
       OSS_INLINE _mthMatcher &getMatcher()
       {
-         return _matcher ;
+         if ( NULL == _matcher )
+         {
+            _matcher = SDB_OSS_NEW _mthMatcher() ;
+         }
+         return *_matcher ;
       }
    public:
       INT32 build( const CHAR *name,
@@ -154,7 +160,7 @@ namespace engine
       MTH_S_ATTRIBUTE _attribute ;
 
       bson::BSONObj _obj ;
-      _mthMatcher _matcher ;
+      _mthMatcher *_matcher ;
       INT32 _begin ;
       INT32 _limit ;
       

@@ -46,6 +46,7 @@
 #include "dpsLogRecord.hpp"
 #include "dpsMessageBlock.hpp"
 #include "dpsLogRecordDef.hpp"
+#include "pmdStartup.hpp"
 
 namespace engine
 {
@@ -81,6 +82,7 @@ namespace engine
       INT32 rc = SDB_OK ;
 
       _isOn = pmdGetOptionCB()->transactionOn() ;
+      _rollbackEvent.signal() ;
 
       IControlBlock *pClsCB = pmdGetKRCB()->getCBByType( SDB_CB_CLS ) ;
       IEventHolder *pHolder = NULL ;
@@ -96,13 +98,22 @@ namespace engine
          UINT32 logFileNum = pmdGetOptionCB()->getReplLogFileNum() ;
          _logFileTotalSize = logFileSize * logFileNum ;
 
-         _maxUsedSize = ( _logFileTotalSize - 2 * DMS_RECORD_MAX_SZ *
-                          logFileNum ) / 2 ;
-
-         UINT64 temp = _logFileTotalSize / 3 ;
-         if ( _maxUsedSize < temp )
+         if ( logFileNum >= 5 )
          {
-            _maxUsedSize = temp ;
+            UINT64 reservedSize = logFileSize * 2 ;
+
+            _maxUsedSize = ( _logFileTotalSize - reservedSize
+                                 - 2 * DMS_RECORD_MAX_SZ * ( logFileNum - 2 ) ) / 2 ;
+
+            UINT64 temp = ( _logFileTotalSize - reservedSize ) / 3 ;
+            if ( _maxUsedSize > temp || 0 == _maxUsedSize )
+            {
+               _maxUsedSize = temp ;
+            }
+         }
+         else
+         {
+            _maxUsedSize = 0 ;
          }
 
          DPS_LSN startLSN = sdbGetDPSCB()->getStartLsn() ;
@@ -121,7 +132,7 @@ namespace engine
 
          if ( getTransMap()->size() > 0 )
          {
-            PD_LOG( PDEVENT, "Restored trnas info, have %d trans not "
+            PD_LOG( PDEVENT, "Restored trans info, have %d trans not "
                     "be complete, the oldest lsn offset is %lld",
                     getTransMap()->size(), getOldestBeginLsn() ) ;
          }
@@ -342,6 +353,17 @@ namespace engine
          _cbMap.erase( transID );
       }
       PD_TRACE_EXIT ( SDB_DPSTRANSCB_DELTRANSCB );
+   }
+
+   void dpsTransCB::dumpTransEDUList( TRANS_EDU_LIST & eduList )
+   {
+      ossScopedLock _lock( &_CBMapMutex ) ;
+      TRANS_CB_MAP::iterator iter = _cbMap.begin() ;
+      while( iter != _cbMap.end() )
+      {
+         eduList.push( iter->second->getID() ) ;
+         ++iter ;
+      }
    }
 
    TRANS_MAP *dpsTransCB::getTransMap()
@@ -748,11 +770,11 @@ namespace engine
       return _TransLock.hasWait( lockId );
    }
 
-   INT32 dpsTransCB::reservedLogSpace( UINT32 length )
+   INT32 dpsTransCB::reservedLogSpace( UINT32 length, _pmdEDUCB *cb )
    {
       INT32 rc = SDB_OK;
       UINT64 usedSize = 0;
-      if ( !_isOn )
+      if ( !_isOn || ( cb && cb->isInRollback() ) )
       {
          goto done ;
       }
@@ -782,9 +804,9 @@ namespace engine
       goto done;
    }
 
-   void dpsTransCB::releaseLogSpace( UINT32 length )
+   void dpsTransCB::releaseLogSpace( UINT32 length, _pmdEDUCB *cb )
    {
-      if ( !_isOn )
+      if ( !_isOn || ( cb && cb->isInRollback() ) )
       {
          return ;
       }

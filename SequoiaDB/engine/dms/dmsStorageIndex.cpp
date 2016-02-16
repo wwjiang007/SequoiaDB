@@ -46,6 +46,7 @@
 #include "dmsCompress.hpp"
 #include "pdTrace.hpp"
 #include "dmsTrace.hpp"
+#include "dmsIndexBuilder.hpp"
 
 using namespace bson ;
 
@@ -203,7 +204,8 @@ namespace engine
                                         const BSONObj &index,
                                         pmdEDUCB * cb,
                                         SDB_DPSCB *dpscb,
-                                        BOOLEAN isSys )
+                                        BOOLEAN isSys,
+                                        INT32 sortBufferSize )
    {
       INT32 rc                     = SDB_OK ;
       dmsExtentID extentID         = DMS_INVALID_EXTENT ;
@@ -219,6 +221,7 @@ namespace engine
       UINT32 logRecSize            = 0;
       SDB_DPSCB *dropDps           = NULL ;
       INT32 rc1                    = 0 ;
+      const CHAR *indexName        = NULL ;
 
       if ( !ixmIndexCB::validateKey ( index, isSys ) )
       {
@@ -246,6 +249,8 @@ namespace engine
          rc = SDB_DMS_INCOMPATIBLE_MODE ;
          goto error ;
       }
+      
+      indexName = index.getStringField( IXM_FIELD_NAME_NAME ) ;
 
       for ( indexID = 0 ; indexID < DMS_COLLECTION_MAX_INDEX ; indexID++ )
       {
@@ -304,7 +309,7 @@ namespace engine
                          rc ) ;
 
             logRecSize = record.alignedLen() ;
-            rc = pTransCB->reservedLogSpace( logRecSize );
+            rc = pTransCB->reservedLogSpace( logRecSize, cb );
             if ( rc )
             {
                PD_LOG( PDERROR, "Failed to reserved log space(length=%u)",
@@ -341,7 +346,7 @@ namespace engine
       }
       dropDps = dpscb ;
 
-      rc = _rebuildIndex( context, indexID, indexLID, cb ) ;
+      rc = _rebuildIndex( context, indexID, indexLID, cb, sortBufferSize ) ;
       if ( rc )
       {
          PD_LOG( PDERROR, "Failed to build index[%s], rc = %d",
@@ -352,7 +357,7 @@ namespace engine
    done :
       if ( 0 != logRecSize )
       {
-         pTransCB->releaseLogSpace( logRecSize );
+         pTransCB->releaseLogSpace( logRecSize, cb );
       }
       return rc ;
    error :
@@ -366,7 +371,7 @@ namespace engine
       }
       goto done ;
    error_after_create :
-      rc1 = dropIndex ( context, indexID, indexLID, cb, dropDps, isSys ) ;
+      rc1 = dropIndex ( context, indexName, cb, dropDps, isSys ) ;
       if ( rc1 )
       {
          PD_LOG ( PDERROR, "Failed to clean up invalid index, rc = %d", rc1 ) ;
@@ -451,6 +456,7 @@ namespace engine
       if ( !found )
       {
          rc = SDB_IXM_NOTEXIST ;
+         goto error ;
       }
 
    done :
@@ -596,7 +602,7 @@ namespace engine
                          rc ) ;
 
             logRecSize = record.alignedLen() ;
-            rc = pTransCB->reservedLogSpace( logRecSize );
+            rc = pTransCB->reservedLogSpace( logRecSize, cb );
             if ( rc )
             {
                PD_LOG( PDERROR, "Failed to reserved log space(length=%u)",
@@ -648,7 +654,7 @@ namespace engine
    done :
       if ( 0 != logRecSize )
       {
-         pTransCB->releaseLogSpace( logRecSize ) ;
+         pTransCB->releaseLogSpace( logRecSize, cb ) ;
       }
       return rc ;
    error :
@@ -656,218 +662,55 @@ namespace engine
    }
 
    INT32 _dmsStorageIndex::_rebuildIndex( dmsMBContext *context, INT32 indexID,
-                                          dmsExtentID indexLID, pmdEDUCB * cb )
+                                          dmsExtentID indexLID, pmdEDUCB * cb,
+                                          INT32 sortBufferSize )
    {
-      INT32 rc                     = SDB_OK ;
-      dmsExtentID firstExtent      = DMS_INVALID_EXTENT ;
-      dmsExtentID scanExtLID       = DMS_INVALID_EXTENT ;
+      INT32 rc = SDB_OK ;
+      dmsIndexBuilder* builder = NULL ;
 
-      BOOLEAN unique               = FALSE ;
-      BOOLEAN dropDups             = FALSE ;
-      ossValuePtr extentPtr        = 0 ;
-      dmsExtent *extent            = NULL ;
-      dmsOffset recordOffset       = DMS_INVALID_OFFSET ;
-      ossValuePtr recordPtr        = 0 ;
-      ossValuePtr realRecordPtr    = 0 ;
-
-      SDB_BPSCB    *pBPSCB         = pmdGetKRCB()->getBPSCB () ;
-      BOOLEAN bPreLoadEnabled      = pBPSCB->isPreLoadEnabled() ;
-      monAppCB * pMonAppCB         = cb ? cb->getMonAppCB() : NULL ;
-
-      rc = context->mbLock( EXCLUSIVE ) ;
-      PD_RC_CHECK( rc, PDERROR, "dms mb context lock failed, rc: %d", rc ) ;
-
-      PD_CHECK ( DMS_INVALID_EXTENT != context->mb()->_indexExtent[indexID],
-                 SDB_INVALIDARG, error, PDERROR,
-                 "Index %d is invalid for collection %d",
-                 indexID, (INT32)context->mbID() ) ;
-
+      if ( sortBufferSize < 0 )
       {
-         ixmIndexCB indexCB ( context->mb()->_indexExtent[indexID], this,
-                              context ) ;
+         PD_LOG ( PDERROR, "invalid index sort buffer size" ) ;
+         rc = SDB_INVALIDARG ;
+         goto error ;
+      }
 
-         if ( DMS_INVALID_EXTENT == indexLID )
-         {
-            indexLID = indexCB.getLogicalID() ;
-         }
+      if ( sortBufferSize > 0 && sortBufferSize < DMS_INDEX_SORT_BUFFER_MIN_SIZE )
+      {
+         sortBufferSize = DMS_INDEX_SORT_BUFFER_MIN_SIZE ;
+      }
 
-         OID oldIndexOID ;
-         PD_CHECK ( indexCB.isInitialized(), SDB_DMS_INIT_INDEX,
-                    error, PDERROR, "Failed to initialize index" ) ;
+      builder = dmsIndexBuilder::createInstance( this, _pDataSu,
+                                                 context, cb,
+                                                 indexID, indexLID,
+                                                 sortBufferSize ) ;
+      if ( NULL == builder )
+      {
+         PD_LOG ( PDERROR, "Failed to get index builder instance, sort buffer size: %d",
+                  sortBufferSize ) ;
+         rc = SDB_SYS ;
+         goto error ;
+      }
 
-         rc = indexCB.getIndexID ( oldIndexOID ) ;
-         PD_RC_CHECK ( rc, PDERROR, "Failed to get indexID, rc = %d", rc ) ;
-
-         if ( IXM_INDEX_FLAG_CREATING == indexCB.getFlag() )
-         {
-            scanExtLID = indexCB.scanExtLID() ;
-         }
-         else if ( IXM_INDEX_FLAG_NORMAL != indexCB.getFlag() &&
-                   IXM_INDEX_FLAG_INVALID != indexCB.getFlag() )
-         {
-            PD_LOG ( PDERROR, "Index is either creating or dropping: %d",
-                     (INT32)indexCB.getFlag() ) ;
-            indexCB.setFlag ( IXM_INDEX_FLAG_INVALID ) ;
-            rc = SDB_IXM_UNEXPECTED_STATUS ;
-            goto error ;
-         }
-         else
-         {
-            rc = indexCB.truncate ( FALSE ) ;
-            if ( rc )
-            {
-               PD_LOG ( PDERROR, "Failed to truncate index, rc: %d", rc ) ;
-               indexCB.setFlag ( IXM_INDEX_FLAG_INVALID ) ;
-               goto error ;
-            }
-            indexCB.setFlag ( IXM_INDEX_FLAG_CREATING ) ;
-         }
-
-         unique = indexCB.unique() ;
-         dropDups = indexCB.dropDups() ;
-
-         firstExtent = context->mb()->_firstExtentID ;
-         context->mbUnlock() ;
-
-         while ( DMS_INVALID_EXTENT != firstExtent )
-         {
-            if ( cb->isInterrupted() )
-            {
-               PD_LOG( PDEVENT, "rebuild index is interrupted" ) ;
-               rc = SDB_APP_INTERRUPT ;
-               goto error ;
-            }
-
-            rc = context->mbLock( SHARED ) ;
-            if ( rc )
-            {
-               indexCB.setFlag ( IXM_INDEX_FLAG_INVALID ) ;
-               PD_LOG( PDERROR, "dms mb context lock failed, rc: %d", rc ) ;
-               goto error ;
-            }
-
-            if ( !indexCB.isStillValid ( oldIndexOID ) ||
-                 indexLID != indexCB.getLogicalID() )
-               {
-                  rc = SDB_DMS_INVALID_INDEXCB ;
-                  goto error ;
-               }
-
-            extentPtr = _pDataSu->extentAddr ( firstExtent ) ;
-            if ( !extentPtr )
-            {
-               PD_LOG ( PDERROR, "Invalid extent: %d", firstExtent ) ;
-               rc = SDB_SYS ;
-               indexCB.setFlag ( IXM_INDEX_FLAG_INVALID ) ;
-               goto error ;
-            }
-            extent = (dmsExtent*)extentPtr ;
-            if ( DMS_EXTENT_FLAG_INUSE != extent->_flag )
-            {
-               PD_LOG ( PDERROR, "Invalid flag %d for extent %d",
-                        extent->_flag, firstExtent ) ;
-               rc = SDB_SYS ;
-               indexCB.setFlag ( IXM_INDEX_FLAG_INVALID ) ;
-               goto error ;
-            }
-
-            if ( DMS_INVALID_EXTENT != scanExtLID &&
-                 extent->_logicID < scanExtLID )
-            {
-               firstExtent = extent->_nextExtent ;
-               context->mbUnlock() ;
-               continue ;
-            }
-
-            recordOffset = extent->_firstRecordOffset ;
-            recordPtr = extentPtr + recordOffset ;
-
-            if ( bPreLoadEnabled &&
-                 DMS_INVALID_EXTENT != extent->_nextExtent )
-            {
-               pBPSCB->sendPreLoadRequest ( bpsPreLoadReq( _pDataSu->CSID(),
-                                            _pDataSu->logicalID(),
-                                            extent->_nextExtent) );
-            }
-
-            while ( DMS_INVALID_OFFSET != recordOffset )
-            {
-               ossValuePtr rPtr = 0 ;
-               try
-               {
-                  realRecordPtr = recordPtr ;
-                  if ( OSS_BIT_TEST ( DMS_RECORD_FLAG_DELETING,
-                                      DMS_RECORD_GETATTR(recordPtr)))
-                  {
-                     recordOffset = DMS_RECORD_GETNEXTOFFSET(recordPtr) ;
-                     recordPtr = extentPtr + recordOffset ;
-                     continue;
-                  }
-                  if ( DMS_RECORD_FLAG_OVERFLOWF ==
-                       DMS_RECORD_GETSTATE(recordPtr))
-                  {
-                     dmsRecordID ovfRID = DMS_RECORD_GETOVF(recordPtr) ;
-                     DMS_MON_OP_COUNT_INC( pMonAppCB, MON_DATA_READ, 1 ) ;
-                     realRecordPtr = _pDataSu->extentAddr(ovfRID._extent) +
-                                     ovfRID._offset ;
-                  }
-                  DMS_RECORD_EXTRACTDATA ( realRecordPtr, rPtr ) ;
-                  BSONObj obj ( (CHAR*)rPtr ) ;
-                  DMS_MON_OP_COUNT_INC( pMonAppCB, MON_DATA_READ, 1 ) ;
-                  DMS_MON_OP_COUNT_INC( pMonAppCB, MON_READ, 1 ) ;
-
-                  rc = _indexInsert ( context, &indexCB, obj,
-                                      dmsRecordID ( firstExtent, recordOffset),
-                                      cb, !unique, dropDups ) ;
-                  if ( rc )
-                  {
-                     if ( SDB_IXM_IDENTICAL_KEY == rc )
-                     {
-                        rc = SDB_OK ;
-                        recordOffset = DMS_RECORD_GETNEXTOFFSET(recordPtr) ;
-                        recordPtr = extentPtr + recordOffset ;
-                        PD_LOG ( PDWARNING, "Identical key is detected "
-                                 "during index rebuild, ignore" ) ;
-                        continue ;
-                     }
-                     PD_LOG ( PDERROR, "Failed to insert into index, rc: %d",
-                              rc ) ;
-                     indexCB.setFlag ( IXM_INDEX_FLAG_INVALID ) ;
-                     goto error ;
-                  }
-               }
-               catch ( std::exception &e )
-               {
-                  PD_LOG ( PDERROR, "Failed to create BSON object: %s",
-                           e.what() ) ;
-                  rc = SDB_SYS ;
-                  indexCB.setFlag ( IXM_INDEX_FLAG_INVALID ) ;
-                  goto error ;
-               }
-
-               recordOffset = DMS_RECORD_GETNEXTOFFSET(recordPtr) ;
-               recordPtr = extentPtr + recordOffset ;
-            } //while
-
-            indexCB.scanExtLID ( extent->_logicID ) ;
-            firstExtent = extent->_nextExtent ;
-
-            context->mbUnlock() ;
-
-         } //while
-
-         indexCB.setFlag ( IXM_INDEX_FLAG_NORMAL ) ;
-         indexCB.scanExtLID ( DMS_INVALID_EXTENT ) ;
+      rc = builder->build() ;
+      if ( SDB_OK != rc )
+      {
+         PD_LOG ( PDERROR, "Failed to build index: %d", rc ) ;
+         goto error ;
       }
 
    done :
-      context->mbUnlock() ;
+      if ( NULL != builder )
+      {
+         dmsIndexBuilder::releaseInstance( builder ) ;
+      }
       return rc ;
    error :
       goto done ;
    }
 
-   INT32 _dmsStorageIndex::rebuildIndexes( dmsMBContext *context, pmdEDUCB *cb )
+   INT32 _dmsStorageIndex::rebuildIndexes( dmsMBContext *context, pmdEDUCB *cb,
+                                           INT32 sortBufferSize )
    {
       INT32 rc                     = SDB_OK ;
       INT32  indexID               = 0 ;
@@ -895,7 +738,7 @@ namespace engine
       {
          PD_LOG ( PDEVENT, "Rebuilding index %d for collection %d",
                   indexID, context->mbID() ) ;
-         rc = _rebuildIndex ( context, indexID, DMS_INVALID_EXTENT, cb ) ;
+         rc = _rebuildIndex ( context, indexID, DMS_INVALID_EXTENT, cb, sortBufferSize ) ;
          if ( rc )
          {
             PD_LOG ( PDERROR, "Failed to rebuild index %d, rc: %d", indexID,
@@ -910,6 +753,35 @@ namespace engine
       goto done ;
    }
 
+   INT32 _dmsStorageIndex::_indexInsert( _ixmIndexCB *indexCB,
+                                         const ixmKey &key,
+                                         const dmsRecordID &rid,
+                                         const Ordering& order,
+                                         _pmdEDUCB *cb,
+                                         BOOLEAN dupAllowed,
+                                         BOOLEAN dropDups )
+   {
+      INT32 rc = SDB_OK ;
+      monAppCB * pMonAppCB = cb ? cb->getMonAppCB() : NULL ;
+
+      ixmExtent rootidx ( indexCB->getRoot(), this ) ;
+
+      rc = rootidx.insert ( key, rid, order, dupAllowed, indexCB ) ;
+      if ( rc )
+      {
+         PD_LOG ( PDERROR, "Failed to insert index, key[%s], rid[%d:%d], rc: %d",
+                  key.toString( FALSE, TRUE ).c_str(), rid._extent,
+                  rid._offset, rc ) ;
+         goto error ;
+      }
+      DMS_MON_OP_COUNT_INC( pMonAppCB, MON_INDEX_WRITE, 1 ) ;
+
+   done:
+      return rc ;
+   error:
+      goto done ;
+   }
+
    INT32 _dmsStorageIndex::_indexInsert( dmsMBContext *context,
                                          ixmIndexCB *indexCB,
                                          BSONObj &inputObj,
@@ -920,7 +792,6 @@ namespace engine
    {
       INT32 rc = SDB_OK ;
       BSONObjSet keySet ;
-      monAppCB * pMonAppCB = cb ? cb->getMonAppCB() : NULL ;
 
       SDB_ASSERT ( indexCB, "indexCB can't be NULL" ) ;
 
@@ -943,16 +814,14 @@ namespace engine
 #if defined (_DEBUG)
             PD_LOG ( PDDEBUG, "Key %s", (*it).toString().c_str() ) ;
 #endif
-            ixmExtent rootidx ( indexCB->getRoot(), this ) ;
             ixmKeyOwned ko ((*it)) ;
 
-            rc = rootidx.insert ( ko, rid, order, dupAllowed, indexCB ) ;
+            rc = _indexInsert ( indexCB, ko, rid, order, cb, dupAllowed, dropDups ) ;
             if ( rc )
             {
                PD_LOG ( PDERROR, "Failed to insert index, rc: %d", rc ) ;
                goto error ;
             }
-            DMS_MON_OP_COUNT_INC( pMonAppCB, MON_INDEX_WRITE, 1 ) ;
          }
       }
 

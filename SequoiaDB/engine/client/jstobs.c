@@ -425,6 +425,13 @@ static BOOLEAN bsonConvertJson ( CHAR **pbuf,
 #endif
          bsonConvertJsonRawConcat ( pbuf, left, temp, FALSE ) ;
          CHECK_LEFT ( left )
+         if( strchr( temp, '.') == 0 && strchr( temp, 'E') == 0
+             && strchr( temp, 'N') == 0 && strchr( temp, 'e') == 0
+             && strchr( temp, 'n') == 0 )
+         {
+            bsonConvertJsonRawConcat ( pbuf, left, ".0", FALSE ) ;
+            CHECK_LEFT ( left )
+         }
          break;
       }
       case BSON_STRING:
@@ -523,49 +530,75 @@ static BOOLEAN bsonConvertJson ( CHAR **pbuf,
          bin_type = bson_iterator_bin_type( &i ) ;
          bin_data = (CHAR *)bson_iterator_bin_data( &i ) ;
          bin_size = bson_iterator_bin_len ( &i ) ;
-         /* first we need to calculate how much space we need to put the new
-          * data */
-         len = getEnBase64Size ( bin_size ) ;
-         /* and then we allocate memory for the display string, which includes
-          * { $binary : xxxxx, $type : xxx }, so we have to put another 40
-          * bytes */
-         temp = (CHAR *)malloc( len + 48 ) ;
-         if ( !temp )
+         if( bin_size > 0 )
          {
-            return FALSE ;
-         }
-         memset ( temp, 0, len + 48 ) ;
-         /* then we have to allocate another piece of memory for base64 encoding
-          */
-         out = (CHAR *)malloc( len + 1 ) ;
-         if ( !out )
-         {
+            /* first we need to calculate how much space we need to put the new
+             * data */
+            len = getEnBase64Size ( bin_size ) ;
+            /* and then we allocate memory for the display string, which includes
+             * { $binary : xxxxx, $type : xxx }, so we have to put another 40
+             * bytes */
+            temp = (CHAR *)malloc( len + 48 ) ;
+            if ( !temp )
+            {
+               return FALSE ;
+            }
+            memset ( temp, 0, len + 48 ) ;
+            /* then we have to allocate another piece of memory for base64 encoding
+             */
+            out = (CHAR *)malloc( len + 1 ) ;
+            if ( !out )
+            {
+               free( temp ) ;
+               return FALSE ;
+            }
+            memset ( out, 0, len ) ;
+            /* encode bin_data to out, with size len */
+            if ( base64Encode( bin_data, bin_size, out, len ) < 0 )
+            {
+               free ( temp ) ;
+               free ( out ) ;
+               return FALSE ;
+            }
+   #ifdef WIN32
+            _snprintf ( temp,
+                        len + 48,
+                        "{ \"$binary\": \"%s\", \"$type\" : \"%d\" }",
+                        out, bin_type ) ;
+   #else
+            snprintf ( temp,
+                       len + 48,
+                       "{ \"$binary\": \"%s\", \"$type\" : \"%d\" }",
+                       out, bin_type ) ;
+   #endif
+            bsonConvertJsonRawConcat ( pbuf, left, temp, FALSE ) ;
             free( temp ) ;
-            return FALSE ;
+            free( out ) ;
+            CHECK_LEFT ( left )
          }
-         memset ( out, 0, len ) ;
-         /* encode bin_data to out, with size len */
-         if ( !base64Encode( bin_data, bin_size, out, len ) )
+         else
          {
-            free ( temp ) ;
-            free ( out ) ;
-            return FALSE ;
+            temp = (CHAR *)malloc( 48 ) ;
+            if ( !temp )
+            {
+               return FALSE ;
+            }
+            memset ( temp, 0, 48 ) ;
+   #ifdef WIN32
+            _snprintf ( temp,
+                        48,
+                        "{ \"$binary\": \"\", \"$type\" : \"%d\" }",
+                        bin_type ) ;
+   #else
+            snprintf ( temp,
+                       48,
+                       "{ \"$binary\": \"\", \"$type\" : \"%d\" }",
+                       bin_type ) ;
+   #endif
+            bsonConvertJsonRawConcat ( pbuf, left, temp, FALSE ) ;
+            free( temp ) ;
+            CHECK_LEFT ( left )
          }
-#ifdef WIN32
-         _snprintf ( temp,
-                     len + 48,
-                     "{ \"$binary\": \"%s\", \"$type\" : \"%d\" }",
-                     out, bin_type ) ;
-#else
-         snprintf ( temp,
-                    len + 48,
-                    "{ \"$binary\": \"%s\", \"$type\" : \"%d\" }",
-                    out, bin_type ) ;
-#endif
-         bsonConvertJsonRawConcat ( pbuf, left, temp, FALSE ) ;
-         free( temp ) ;
-         free( out ) ;
-         CHECK_LEFT ( left )
          break ;
       }
       case BSON_UNDEFINED:
@@ -877,6 +910,15 @@ static BOOLEAN jsonConvertBson ( cJSON *cj, bson *bs, BOOLEAN isObj )
       case cJSON_Timestamp:
       case cJSON_Date:
       {
+         /*
+            eg. before 1927-12-31-23.54.07,
+            will be more than 352 seconds
+            UTC time
+            date min 1900-01-01-00.00.00.000000 +/- TZ
+            date max 9999-12-31-23.59.59.999999 +/- TZ
+            timestamp min 1901-12-13-20.45.52.000000 +/- TZ
+            timestamp max 2038-01-19-03.14.07.999999 +/- TZ
+         */
          struct tm t ;
          /* date and timestamp */
          INT32 year   = 0 ;
@@ -934,37 +976,44 @@ static BOOLEAN jsonConvertBson ( cJSON *cj, bson *bs, BOOLEAN isObj )
                }
             }
          }
-         --month ;
          /* sanity check for years */
-         if( cJSON_Timestamp == cj->type && (
-             year    >=    INT32_LAST_YEAR   ||
-             month   >=    RELATIVE_MOD      || //[0,11]
-             month   <     0                 ||
-             day     >     RELATIVE_DAY      || //[1,31]
-             day     <=    0 ) )
+         if( cJSON_Timestamp == cj->type )
          {
-            return FALSE ;
+            if( year > INT32_LAST_YEAR )
+            {
+               return FALSE ;
+            }
+            else if( year < RELATIVE_YEAR )
+            {
+               return FALSE ;
+            }
+            if( month   >  RELATIVE_MON     || //[1,12]
+                month   <  1                ||
+                day     >  RELATIVE_DAY     || //[1,31]
+                day     <  1                ||
+                hour    >= RELATIVE_HOUR    || //[0,23]
+                hour    <  0                ||
+                minute  >= RELATIVE_MIN_SEC || //[0,59]
+                minute  <  0                ||
+                second  >= RELATIVE_MIN_SEC || //[0,59]
+                second  < 0 )
+            {
+               return FALSE ;
+            }
          }
-         if( cJSON_Timestamp == cj->type && (
-             hour    >=    RELATIVE_HOUR     || //[0,23]
-             hour    <     0                 ||
-             minute  >=    RELATIVE_MIN_SEC  || //[0,59]
-             minute  <     0                 ||
-             second  >=    RELATIVE_MIN_SEC  || //[0,59]
-             second  <     0                )
-           )
-         {
-            return FALSE ;
-         }
+
          if( cJSON_Date == cj->type && (
-             month   >=    RELATIVE_MOD      || //[0,11]
-             month   <     0                 ||
+             year    >     INT64_LAST_YEAR   || //[1900,9999]
+             year    <     RELATIVE_YEAR     ||
+             month   >     RELATIVE_MON      || //[1,12]
+             month   <     1                 ||
              day     >     RELATIVE_DAY      || //[1,31]
-             day     <=    0 ) )
+             day     <     1 ) )
          {
             return FALSE ;
          }
 
+         --month ;
          year -= RELATIVE_YEAR ;
 
          /* construct tm */
@@ -977,8 +1026,16 @@ static BOOLEAN jsonConvertBson ( cJSON *cj, bson *bs, BOOLEAN isObj )
 
          /* create integer time representation */
          timep = mktime( &t ) ;
-         if( !timep )
+         if( cJSON_Date == cj->type &&
+                  ( timep < TIME_STAMP_DATE_MIN || timep > TIME_STAMP_DATE_MAX ) )
+         {
             return FALSE ;
+         }
+         else if( cJSON_Timestamp == cj->type &&
+                  ( timep < TIME_STAMP_TIMESTAMP_MIN || timep > TIME_STAMP_TIMESTAMP_MAX ) )
+         {
+            return FALSE ;
+         }
          /* append timestamp or date accordingly */
          if ( cJSON_Timestamp == cj->type )
          {
@@ -1095,28 +1152,45 @@ static BOOLEAN jsonConvertBson ( cJSON *cj, bson *bs, BOOLEAN isObj )
             INT32 out_len = 0 ;
             /* first we calculate the expected size after extraction */
             INT32 len = getDeBase64Size ( cj->valuestring ) ;
-            /* and allocate memory */
-            CHAR *out = (CHAR *)malloc ( len ) ;
-            if ( !out )
-               return FALSE ;
-            memset ( out, 0, len ) ;
-            /* and then decode into the buffer we just allocated */
-            if ( !base64Decode( cj->valuestring, out, len ) )
+            if( len < 0 )
             {
-               free ( out ) ;
                return FALSE ;
             }
-            out_len = len - 1 ;
-            if ( 5 == cj->valueint &&
-               CJSON_MD5_16 != out_len &&
-               CJSON_MD5_32 != out_len &&
-               CJSON_MD5_64 != out_len )
-               return FALSE ;
-            if ( 3 == cj->valueint && CJSON_UUID != out_len )
-               return FALSE ;
-            /* and then append into bson */
-            bson_append_binary( bs, cj->string , cj->valueint, out, out_len ) ;
-            free( out ) ;
+            if( len > 0 )
+            {
+               /* and allocate memory */
+               CHAR *out = (CHAR *)malloc ( len ) ;
+               if ( !out )
+                  return FALSE ;
+               memset ( out, 0, len ) ;
+               /* and then decode into the buffer we just allocated */
+               if ( base64Decode( cj->valuestring, out, len ) < 0 )
+               {
+                  free ( out ) ;
+                  return FALSE ;
+               }
+               out_len = len - 1 ;
+               if ( 5 == cj->valueint &&
+                  CJSON_MD5_16 != out_len &&
+                  CJSON_MD5_32 != out_len &&
+                  CJSON_MD5_64 != out_len )
+               {
+                  free ( out ) ;
+                  return FALSE ;
+               }
+               if ( 3 == cj->valueint && CJSON_UUID != out_len )
+               {
+                  free ( out ) ;
+                  return FALSE ;
+               }
+               /* and then append into bson */
+               bson_append_binary( bs, cj->string , cj->valueint, out, out_len ) ;
+               free( out ) ;
+            }
+            else
+            {
+               bson_append_binary( bs, cj->string , cj->valueint, "", 0 ) ;
+            }
          }
          else
          {
@@ -1126,26 +1200,38 @@ static BOOLEAN jsonConvertBson ( cJSON *cj, bson *bs, BOOLEAN isObj )
             INT32 out_len = 0 ;
             get_char_num ( num, i, INT_NUM_SIZE ) ;
             len = getDeBase64Size ( cj->valuestring ) ;
-
-            out = (CHAR *)malloc(len) ;
-            if ( !out )
-               return FALSE ;
-            memset ( out, 0, len ) ;
-            if ( !base64Decode( cj->valuestring, out, len ) )
+            if( len > 0 )
             {
+               out = (CHAR *)malloc(len) ;
+               if ( !out )
+                  return FALSE ;
+               memset ( out, 0, len ) ;
+               if ( !base64Decode( cj->valuestring, out, len ) )
+               {
+                  free ( out ) ;
+                  return FALSE ;
+               }
+               out_len = len - 1 ;
+               if ( 5 == cj->valueint &&
+                  CJSON_MD5_16 != out_len &&
+                  CJSON_MD5_32 != out_len &&
+                  CJSON_MD5_64 != out_len )
+               {
+                  free ( out ) ;
+                  return FALSE ;
+               }
+               if ( 3 == cj->valueint && CJSON_UUID != out_len )
+               {
+                  free ( out ) ;
+                  return FALSE ;
+               }
+               bson_append_binary( bs, num , cj->valueint, out, out_len ) ;
                free ( out ) ;
-               return FALSE ;
             }
-            out_len = len - 1 ;
-            if ( 5 == cj->valueint &&
-               CJSON_MD5_16 != out_len &&
-               CJSON_MD5_32 != out_len &&
-               CJSON_MD5_64 != out_len )
-               return FALSE ;
-            if ( 3 == cj->valueint && CJSON_UUID != out_len )
-               return FALSE ;
-            bson_append_binary( bs, num , cj->valueint, out, out_len ) ;
-            free ( out ) ;
+            else
+            {
+               bson_append_binary( bs, num , cj->valueint, "", 0 ) ;
+            }
          }
          break ;
       }

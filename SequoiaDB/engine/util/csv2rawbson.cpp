@@ -1555,32 +1555,41 @@ INT32 csvParser::_string2binary( _csvBinary &value, CHAR *pBuffer, INT32 size )
                      goto error ;
                   }
                   base64Len = getDeBase64Size( pStr ) ;
-                  if( base64Len == 0 )
+                  if( base64Len < 0 )
                   {
                      rc = SDB_INVALIDARG ;
                      PD_LOG ( PDERROR, "Binary format error, %*s, rc=%d",
                               size, pBuffer, rc ) ;
                      goto error ;
                   }
-                  pDeStr = (CHAR *)SDB_OSS_MALLOC( base64Len ) ;
-                  if ( !pDeStr )
+                  if( base64Len > 0 )
                   {
-                     PD_LOG ( PDERROR, "Failed to allocate memory for %d bytes",
-                              base64Len ) ;
-                     rc = SDB_OOM ;
-                     goto error ;
+                     pDeStr = (CHAR *)SDB_OSS_MALLOC( base64Len ) ;
+                     if ( !pDeStr )
+                     {
+                        PD_LOG ( PDERROR, "Failed to allocate memory for %d bytes",
+                                 base64Len ) ;
+                        rc = SDB_OOM ;
+                        goto error ;
+                     }
+                     ossMemset( pDeStr, 0, base64Len ) ;
+                     if ( base64Decode( pStr, pDeStr, base64Len ) < 0 )
+                     {
+                        rc = SDB_INVALIDARG ;
+                        PD_LOG ( PDERROR, "Binary format error, %*s, rc=%d",
+                                 size, pBuffer, rc ) ;
+                        goto error ;
+                     }
+                     value.strSize = base64Len - 1 ;
+                     value.pStr = pDeStr ;
+                     value.type = binaryType ;
                   }
-                  ossMemset( pDeStr, 0, base64Len ) ;
-                  if ( !base64Decode( pStr, pDeStr, base64Len ) )
+                  else
                   {
-                     rc = SDB_INVALIDARG ;
-                     PD_LOG ( PDERROR, "Binary format error, %*s, rc=%d",
-                              size, pBuffer, rc ) ;
-                     goto error ;
+                     value.strSize = 0 ;
+                     value.pStr = "" ;
+                     value.type = binaryType ;
                   }
-                  value.strSize = base64Len - 1 ;
-                  value.pStr = pDeStr ;
-                  value.type = binaryType ;
                   goto done ;
                }
             }
@@ -2451,11 +2460,11 @@ the field appears delChar, rc = %d", rc ) ;
       goto error ;
    }
    bsonsize = *((INT32*)obj.data) ;
-   if ( bsonsize < 0 )
+   if( bsonsize < 0 )
    {
       PD_LOG ( PDERROR, "bson size error, %d bytes",
                bsonsize ) ;
-      rc = SDB_OOM ;
+      rc = SDB_DRIVER_BSON_ERROR ;
       goto error ;
    }
    pBsonBuf = (CHAR*)SDB_OSS_MALLOC( bsonsize ) ;

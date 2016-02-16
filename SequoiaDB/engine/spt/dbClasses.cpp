@@ -168,6 +168,28 @@
 #define SDB_JSVAL_IS_OBJECT(x) \
    (JSVAL_IS_NULL(x) || JSVAL_IS_VOID(x) || ! JSVAL_IS_PRIMITIVE(x))
 
+#define GET_OBJ_FROM_ARG_ARR( cx, argc, argv, argNum, pJsObj, pBson, funcName ) \
+   do {                                                                        \
+      if ( argc >= argNum ) {                                                  \
+         if ( SDB_JSVAL_IS_OBJECT ( argv[argNum - 1] ) ) {                     \
+            pJsObj = SDB_JSVAL_TO_OBJECT ( argv[argNum -1] ) ;                 \
+            if ( pJsObj ) {                                                    \
+               argv[argNum -1] = OBJECT_TO_JSVAL ( pJsObj ) ;                  \
+               VERIFY ( objToBson( cx , pJsObj , &pBson ) ) ;                  \
+            }                                                                  \
+         }                                                                     \
+         else {                                                                \
+            CHAR buf[10] = { 0 } ;                                             \
+            string str = "" ;                                                  \
+            sprintf( buf, "%dth", argNum ) ;                                   \
+            str = str + funcName + ": the " ;                                  \
+            str = str + (argNum == 1?"lst":(argNum == 2?"2nd":(argNum == 3?"3rd": buf))) ; \
+            str = str + " argument should be an object" ;                      \
+            REPORT_RC_MSG( FALSE, funcName, SDB_INVALIDARG, str.c_str() ) ;    \
+         }                                                                     \
+      }                                                                        \
+   } while ( 0 )
+
 #define NODE_NAME_SPLIT ':'
 #define SDB_DEF_COORD_NAME "localhost"
 #define SDB_DEF_COORD_PORT OSS_DFT_SVCPORT
@@ -1832,7 +1854,19 @@ static JSBool collection_split ( JSContext *cx , uintN argc , jsval *vp )
       JS_GetPrivate ( cx , JS_THIS_OBJECT ( cx , vp ) ) ;
    REPORT ( collection , "SdbCollection.split(): no collection handle" ) ;
 
-   REPORT( argc >= 3, "SdbCollection.split(): wrong argument number" ) ;
+   REPORT( argc >= 3, "SdbCollection.split(): invalid argument" ) ;
+   
+   if ( !JSVAL_IS_STRING( argv[0] ) )
+   {
+      REPORT ( FALSE , "SdbCollection.split(): the 1st argument "
+         "should be a string" ) ;
+   }
+
+   if ( !JSVAL_IS_STRING( argv[1] ) )
+   {
+      REPORT ( FALSE , "SdbCollection.split(): the 2nd argument "
+         "should be a string" ) ;
+   }
 
    if ( JSVAL_IS_INT( argv[2] ) )
    {
@@ -1850,16 +1884,11 @@ static JSBool collection_split ( JSContext *cx , uintN argc , jsval *vp )
       ret = objToBson ( cx , objCond , &bsonCond ) ;
       VERIFY ( ret ) ;
 
-      if ( 4 == argc )
-      {
-         objEndCond = SDB_JSVAL_TO_OBJECT( argv[3] ) ;
-         ret = objToBson( cx, objEndCond, &bsonEndCond ) ;
-         VERIFY ( ret ) ;
-      }
+      GET_OBJ_FROM_ARG_ARR( cx, argc, argv, 4, objEndCond, bsonEndCond, "SdbCollection.split()" ) ;
    }
    else
    {
-      REPORT( FALSE, "SdbCollection.split(): wrong argument[%d]", 3 ) ;
+      REPORT( FALSE, "SdbCollection.split(): the 3nd argument is invalid" ) ;
    }
 
    ret = JS_ConvertArguments ( cx , argc , argv , "SS/" ,
@@ -1924,8 +1953,19 @@ static JSBool collection_split_async ( JSContext *cx , uintN argc , jsval *vp )
    collection = (sdbCollectionHandle *)
       JS_GetPrivate ( cx , JS_THIS_OBJECT ( cx , vp ) ) ;
    REPORT ( collection , "SdbCollection.splitAsync(): no collection handle" ) ;
+   REPORT( argc >= 3, "SdbCollection.splitAsync(): invalid argument" ) ;
+   
+   if ( !JSVAL_IS_STRING( argv[0] ) )
+   {
+      REPORT ( FALSE , "SdbCollection.splitAsync(): the 1st argument "
+         "should be a string" ) ;
+   }
 
-   REPORT( argc >= 3, "SdbCollection.splitAsync(): wrong argument number" ) ;
+   if ( !JSVAL_IS_STRING( argv[1] ) )
+   {
+      REPORT ( FALSE , "SdbCollection.splitAsync(): the 2nd argument "
+         "should be a string" ) ;
+   }
 
    if ( JSVAL_IS_INT( argv[2] ) )
    {
@@ -1943,16 +1983,11 @@ static JSBool collection_split_async ( JSContext *cx , uintN argc , jsval *vp )
       ret = objToBson ( cx , objCond , &bsonCond ) ;
       VERIFY ( ret ) ;
 
-      if ( 4 == argc )
-      {
-         objEndCond = SDB_JSVAL_TO_OBJECT( argv[3] ) ;
-         ret = objToBson( cx, objEndCond, &bsonEndCond ) ;
-         VERIFY ( ret ) ;
-      }
+      GET_OBJ_FROM_ARG_ARR( cx, argc, argv, 4, objEndCond, bsonEndCond, "SdbCollection.splitAsync()" ) ;
    }
    else
    {
-      REPORT( FALSE, "SdbCollection.splitAsync(): wrong argument[%d]", 3 ) ;
+      REPORT( FALSE, "SdbCollection.splitAsync(): the 3nd argument is invalid" ) ;
    }
 
    ret = JS_ConvertArguments ( cx , argc , argv , "SS/" ,
@@ -2042,41 +2077,54 @@ static JSBool collection_create_index ( JSContext *cx , uintN argc , jsval *vp )
    CHAR *               name        = NULL ;
    JSBool               unique      = JS_FALSE ;
    JSBool               enforced    = JS_FALSE ;
+   INT32                sortBufferSize = SDB_INDEX_SORT_BUFFER_DEFAULT_SIZE ;
+   stringstream ss ;
+#define BUILD_ERROR_MSG( msg ) \
+   do {                        \
+   ss.str("") ;                \
+   ss << "SdbCollection.createIndex()" ; \
+   ss << ": " ;                \
+   ss << string(msg) ;         \
+   } while (0)
 
-   REPORT ( argc >= 2 ,
-            "SdbCollection.createIndex(): need at least two arguments" ) ;
-
-   REPORT ( ! JSVAL_IS_PRIMITIVE ( argv[1] ) ,
-            "SdbCollection.createIndex(): 2nd argument is not valid object" ) ;
-
+   BUILD_ERROR_MSG( "need at least two arguments" );
+   REPORT ( argc >= 2 , ss.str().c_str() ) ;
+   BUILD_ERROR_MSG( "the 1st argument should be a string" ) ;
+   REPORT ( JSVAL_IS_STRING( argv[0] ), ss.str().c_str() ) ;
+   BUILD_ERROR_MSG( "the 2nd argument should be an object" ) ;
+   REPORT ( ! JSVAL_IS_PRIMITIVE ( argv[1] ), ss.str().c_str() ) ;
    collection = (sdbCollectionHandle *)
       JS_GetPrivate ( cx , JS_THIS_OBJECT ( cx , vp ) ) ;
-   REPORT ( collection , "SdbCollection.createIndex(): no collection handle" ) ;
-
+   BUILD_ERROR_MSG( "no collection handle" ) ;
+   REPORT ( collection , ss.str().c_str() ) ;
    strName = JS_ValueToString ( cx , argv[0] ) ;
    VERIFY ( strName ) ;
    argv[0] = STRING_TO_JSVAL ( strName ) ;
-
    name = JS_EncodeString ( cx , strName ) ;
    VERIFY ( name ) ;
-
    objDef = JSVAL_TO_OBJECT ( argv[1] ) ;
    VERIFY ( objDef ) ;
    VERIFY ( objToBson ( cx , objDef , &bsonDef ) ) ;
 
    if ( argc >= 3 )
    {
-      REPORT( JSVAL_IS_BOOLEAN( argv[2]), "3rd argument should be bool" ) ;
+      REPORT ( JSVAL_IS_BOOLEAN( argv[2]), "the 3rd argument should be bool" ) ;
       VERIFY ( JS_ValueToBoolean ( cx , argv[2] , &unique ) ) ;
    }
    if ( argc >= 4 )
    {
-      REPORT( JSVAL_IS_BOOLEAN( argv[3]), "4th argument should be bool" ) ;
+      REPORT ( JSVAL_IS_BOOLEAN( argv[3]), "the 4th argument should be bool" ) ;
       VERIFY ( JS_ValueToBoolean ( cx, argv[3], &enforced ) ) ;
    }
+   if ( argc >= 5 )
+   {
+      REPORT ( JSVAL_IS_INT( argv[4]), "the 5th argument should be int" ) ;
+      sortBufferSize = JSVAL_TO_INT ( argv[4] ) ;
+      REPORT ( sortBufferSize >= 0, "invalid sortBufferSize: %d", sortBufferSize ) ;
+   }
 
-   rc = sdbCreateIndex ( *collection , bsonDef , name , unique ? TRUE : FALSE,
-                         enforced ? TRUE : FALSE );
+   rc = sdbCreateIndex1 ( *collection , bsonDef , name , unique ? TRUE : FALSE,
+                         enforced ? TRUE : FALSE, sortBufferSize );
    REPORT_RC ( SDB_OK == rc , "SdbCollection.createIndex()" , rc ) ;
 
    JS_SET_RVAL ( cx , vp , JSVAL_VOID ) ;
@@ -2087,7 +2135,8 @@ done :
    PD_TRACE_EXIT ( SDB_COLL_CRT_INX );
    return ret ;
 error :
-   TRY_REPORT ( cx , "SdbCollection.createIndex(): false" ) ;
+   BUILD_ERROR_MSG( "false" ) ;
+   TRY_REPORT ( cx , ss.str().c_str() ) ;
    goto done ;
 }
 
@@ -2220,6 +2269,12 @@ static JSBool collection_bulk_insert ( JSContext *cx , uintN argc , jsval *vp )
    for ( i = 0 ; i < len ; i++ )
    {
       VERIFY ( JS_GetElement ( cx , objArray , i , &valElem ) ) ;
+      if ( !JSVAL_IS_OBJECT( valElem ) )
+      {
+         REPORT ( FALSE , "SdbCollection._bulkInsert(): the %d%s element in array "
+            "should be a json", i+1,
+            0 == i ? "st" : ( 1 == i ? "nd" : ( 2 == i ? "rd" : "th" ) ) ) ;
+      }
       objElem = JSVAL_TO_OBJECT ( valElem ) ;
       VERIFY ( objToBson ( cx , objElem , &bsonArray[i] ) ) ;
    }
@@ -4451,10 +4506,12 @@ static JSBool sdb_create_domain ( JSContext *cx, uintN argc, jsval *vp )
 
    if ( argc >= 2 )
    {
+      REPORT ( !JSVAL_IS_PRIMITIVE( argv[1] ),
+                "Sdb.createDomain(): the 2nd argument should be array of groups" ) ;
       domainObj = JSVAL_TO_OBJECT ( argv[1] ) ;
       VERIFY ( domainObj ) ;
       REPORT ( JS_IsArrayObject ( cx, domainObj ),
-               "Sdb.createDomain(): second argument must be array of groups" ) ;
+               "Sdb.createDomain(): the 2nd argument must be array of groups" ) ;
       VERIFY ( BSON_OK ==
                bson_append_start_array ( &bsonDef, FIELD_NAME_GROUPS ) ) ;
       VERIFY ( JS_GetArrayLength ( cx, domainObj, &groupListL ) ) ;
@@ -4493,6 +4550,10 @@ static JSBool sdb_create_domain ( JSContext *cx, uintN argc, jsval *vp )
             bson_iterator_next( &itr ) ;
             bson_append_element( &bsonDef, NULL, &itr ) ;
          }
+      }
+      else
+      {
+         REPORT ( FALSE, "the 3rd argument should be an object" ) ;
       }
    }
 
@@ -4533,10 +4594,10 @@ static JSBool sdb_drop_domain ( JSContext *cx, uintN argc, jsval *vp )
    PD_TRACE_ENTRY ( SDB_SDB_DROP_DOMAIN ) ;
    connection = (sdbConnectionHandle *)
          JS_GetPrivate ( cx, JS_THIS_OBJECT ( cx, vp ) ) ;
-   REPORT ( connection, "Sdb.dropDoamin(): no connection handle" ) ;
+   REPORT ( connection, "Sdb.dropDomain(): no connection handle" ) ;
    ret = JS_ConvertArguments ( cx , argc , JS_ARGV ( cx , vp ) ,
                                "S" , &domainName ) ;
-   REPORT ( ret && domainName, "Sdb.dropDoamin(): wrong arguments" ) ;
+   REPORT ( ret && domainName, "Sdb.dropDomain(): wrong arguments" ) ;
    name = JS_EncodeString ( cx, domainName ) ;
    VERIFY ( name ) ;
    rc = sdbDropDomain ( *connection, name ) ;
@@ -4564,10 +4625,10 @@ static JSBool sdb_get_domain ( JSContext *cx, uintN argc, jsval *vp )
    PD_TRACE_ENTRY ( SDB_SDB_DROP_DOMAIN ) ;
    connection = (sdbConnectionHandle *)
          JS_GetPrivate ( cx, JS_THIS_OBJECT ( cx, vp ) ) ;
-   REPORT ( connection, "Sdb.getDoamin(): no connection handle" ) ;
+   REPORT ( connection, "Sdb.getDomain(): no connection handle" ) ;
    ret = JS_ConvertArguments ( cx , argc , JS_ARGV ( cx , vp ) ,
                                "S" , &domainName ) ;
-   REPORT ( ret && domainName, "Sdb.getDoamin(): wrong arguments" ) ;
+   REPORT ( ret && domainName, "Sdb.getDomain(): wrong arguments" ) ;
    name = JS_EncodeString ( cx, domainName ) ;
    VERIFY ( name ) ;
 
@@ -6742,7 +6803,7 @@ static JSBool sdb_force_step_up( JSContext *cx, uintN argc, jsval *vp )
    REPORT ( connection , "Sdb.forceSetpUp(): no connection handle" ) ;
 
    ret = JS_ConvertArguments ( cx , argc , JS_ARGV ( cx , vp ) ,
-                               "/o" , opsObj ) ;
+                               "/o" , &opsObj ) ;
    REPORT ( ret , "Sdb.forceStepUp(): wrong arguments" ) ;
 
    if ( NULL != opsObj )

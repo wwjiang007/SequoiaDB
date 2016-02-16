@@ -922,9 +922,9 @@ public:
 
    INT32 init() ;
 
-   INT32 getLimit( const CHAR *str,
-                   INT64 &soft,
-                   INT64 &hard ) const ;
+   BOOLEAN getLimit( const CHAR *str,
+                     INT64 &soft,
+                     INT64 &hard ) const ;
 
 private:
    void _initRLimit( INT32 resource, const CHAR *str ) ;

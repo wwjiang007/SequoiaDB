@@ -1485,7 +1485,8 @@ namespace engine
                                           netMultiRouteAgent *pRouteAgent,
                                           pmdEDUCB *cb,
                                           REQUESTID_MAP &sendNodes,
-                                          MSG_ROUTE_SERVICE_TYPE type )
+                                          MSG_ROUTE_SERVICE_TYPE type,
+                                          BOOLEAN ignoreError )
    {
       INT32 rc = SDB_OK;
       PD_TRACE_ENTRY ( SDB_RTNCOSENDREQUESTTONODEGROUPS ) ;
@@ -1499,7 +1500,10 @@ namespace engine
          {
             PD_LOG ( PDERROR, "Failed to send the request to the group(%u), "
                      "rc=%d", iter->first, rc ) ;
-            break ;
+            if ( !ignoreError )
+            {
+               break ;
+            }
          }
          ++iter;
       }

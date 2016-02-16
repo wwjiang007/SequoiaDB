@@ -52,6 +52,7 @@
 #include "rtnContextSort.hpp"
 #include "dpsOp2Record.hpp"
 #include "rtnLob.hpp"
+#include "monDump.hpp"
 
 using namespace bson;
 namespace engine
@@ -106,7 +107,7 @@ namespace engine
       return "UNKNOW" ;
    }
 
-   #define RTN_CONTEXT_GETNUM_ONCE              (100)
+   #define RTN_CONTEXT_GETNUM_ONCE              (1000)
 
    /*
       _rtnContextBase implement
@@ -248,6 +249,8 @@ namespace engine
       return SDB_OK ;
    }
 
+   #define RTN_CONTEXT_MAX_BUFF_SIZE      ( 5 * RTN_RESULTBUFFER_SIZE_MAX )
+
    INT32 _rtnContextBase::_reallocBuffer( SINT32 requiredSize )
    {
       INT32 rc = SDB_OK ;
@@ -261,17 +264,17 @@ namespace engine
 
       while ( requiredSize > _resultBufferSize )
       {
-         if ( _resultBufferSize >= RTN_RESULTBUFFER_SIZE_MAX )
+         if ( _resultBufferSize >= RTN_CONTEXT_MAX_BUFF_SIZE )
          {
             PD_LOG ( PDERROR, "Result buffer is greater than %d bytes",
-                     RTN_RESULTBUFFER_SIZE_MAX ) ;
+                     RTN_CONTEXT_MAX_BUFF_SIZE ) ;
             rc = SDB_OOM ;
             goto error ;
          }
          _resultBufferSize = _resultBufferSize << 1 ;
-         if (_resultBufferSize > RTN_RESULTBUFFER_SIZE_MAX )
+         if (_resultBufferSize > RTN_CONTEXT_MAX_BUFF_SIZE )
          {
-            _resultBufferSize = RTN_RESULTBUFFER_SIZE_MAX ;
+            _resultBufferSize = RTN_CONTEXT_MAX_BUFF_SIZE ;
          }
       }
 
@@ -2153,6 +2156,174 @@ namespace engine
          ss << ",NumToSkip:" << _numToSkip ;
       }
    }
+
+#if defined SDB_ENGINE
+   /*
+     _rtnContextTransDump implement
+   */
+   _rtnContextTransDump::_rtnContextTransDump( INT64 contextID,
+                                               UINT64 eduID )
+   :_rtnContextDump( contextID, eduID )
+   {
+      _numToReturn   = -1 ;
+      _numToSkip     = 0 ;
+   }
+
+   _rtnContextTransDump::~_rtnContextTransDump()
+   {
+   }
+
+   RTN_CONTEXT_TYPE _rtnContextTransDump::getType() const
+   {
+      return RTN_CONTEXT_TRANS_DUMP ;
+   }
+
+   INT32 _rtnContextTransDump::open( const BSONObj & selector,
+                                       const BSONObj & matcher,
+                                       INT64 numToReturn,
+                                       INT64 numToSkip,
+                                       BOOLEAN isDumpCurrentEdu )
+   {
+      INT32 rc = SDB_OK ;
+
+      PD_CHECK( !_isOpened, SDB_DMS_CONTEXT_IS_OPEN, error, PDERROR,
+                "The context(transaction-dump) is opened!" ) ;
+      if ( !selector.isEmpty() )
+      {
+         try
+         {
+            rc = _selector.loadPattern( selector ) ;
+         }
+         catch( std::exception &e )
+         {
+            PD_RC_CHECK( SDB_INVALIDARG, PDERROR,
+                         "Failed to load pattern for selector: %s, %s",
+                         selector.toString().c_str(), e.what() ) ;
+         }
+         PD_RC_CHECK( rc, PDERROR,
+                      "Failed to load selector: %s, rc = %d",
+                      selector.toString().c_str(), rc ) ;
+      }
+
+      if ( !matcher.isEmpty() )
+      {
+         try
+         {
+            rc = newMatcher() ;
+            PD_RC_CHECK( rc, PDERROR,
+                         "Failed to create new matcher(rc = %d)!",
+                         rc ) ;
+            rc = _matcher->loadPattern( matcher ) ;
+         }
+         catch( std::exception &e )
+         {
+            PD_RC_CHECK( SDB_INVALIDARG, PDERROR,
+                         "Failed to load pattern for matcher: %s, %s",
+                         selector.toString().c_str(), e.what() ) ;
+         }
+         PD_RC_CHECK( rc, PDERROR,
+                      "Failed to load matcher: %s, rc = %d",
+                      selector.toString().c_str(), rc ) ;
+      }
+
+      _numToReturn = numToReturn ;
+      _numToSkip = numToSkip > 0 ? numToSkip : 0 ;
+      _hitEnd = _numToReturn == 0 ? TRUE : FALSE ;
+
+      if ( isDumpCurrentEdu )
+      {
+         _eduList.push( eduID() ) ;
+      }
+      else
+      {
+         sdbGetTransCB()->dumpTransEDUList( _eduList ) ;
+      }
+
+      _isOpened = TRUE ;
+   done:
+      return rc ;
+   error:
+      goto done ;
+   }
+
+   INT32 _rtnContextTransDump::_prepareData( _pmdEDUCB *cb )
+   {
+      INT32 rc = SDB_OK ;
+      if ( 0 == _numToReturn )
+      {
+         _hitEnd = TRUE ;
+         goto done ;
+      }
+
+      while( _numToReturn != 0 && numRecords() < CACHE_RECORDS_MAX_NUM )
+      {
+         BSONObjBuilder bobEduTransInfo ;
+         BSONArrayBuilder babLockList ;
+         UINT32 lockNum = 0 ;
+         DpsTransCBLockList::iterator iterLock = _curTransInfo._lockList.begin() ;
+         while ( iterLock != _curTransInfo._lockList.end() )
+         {
+            if ( iterLock->first == _curTransInfo._waitLock )
+            {
+               _curTransInfo._lockList.erase( iterLock++ ) ;
+               continue ;
+            }
+            babLockList.append( iterLock->first.toBson() ) ;
+            _curTransInfo._lockList.erase( iterLock++ ) ;
+            if ( ++lockNum >= CACHE_LOCK_MAX_NUM )
+            {
+               break ;
+            }
+         }
+         if ( lockNum != 0 )
+         {
+            bobEduTransInfo.appendElements( _curEduInfo ) ;
+            bobEduTransInfo.appendArray( FIELD_NAME_TRANS_LOCKS, babLockList.arr() ) ;
+            monAppend( bobEduTransInfo.obj() ) ;
+            continue ;
+         }
+         if ( _eduList.empty() )
+         {
+            _hitEnd = TRUE ;
+            break ;
+         }
+
+         EDUID eduId = _eduList.front() ;
+         _eduList.pop() ;
+         monDumpTransInfoFromCB( cb, eduId ) ;
+      }
+   done:
+      return rc ;
+   }
+
+   INT32 _rtnContextTransDump::monDumpTransInfoFromCB( _pmdEDUCB *cb, EDUID eduId  )
+   {
+      INT32 rc = SDB_OK ;
+      SDB_ASSERT( _curTransInfo._lockList.empty(),
+                  "_curEduLockList is not empty!" ) ;
+      cb->getEDUMgr()->dumpTransInfo( eduId, _curTransInfo ) ;
+      try
+      {
+         BSONObjBuilder bobTransInfo ;
+         monAppendSystemInfo( bobTransInfo, MON_MASK_NODEID ) ;
+         bobTransInfo.append( FIELD_NAME_SESSIONID, ( long long int)(_curTransInfo._eduID) ) ;
+         bobTransInfo.append( FIELD_NAME_TRANSACTION_ID, ( long long int)(_curTransInfo._transID) ) ;
+         bobTransInfo.append( FIELD_NAME_TRANS_LSN_CUR, ( long long int)(_curTransInfo._curTransLsn) ) ;
+         bobTransInfo.append( FIELD_NAME_TRANS_WAIT_LOCK, _curTransInfo._waitLock.toBson() ) ;
+         bobTransInfo.append( FIELD_NAME_TRANS_LOCKS_NUM, _curTransInfo._locksNum ) ;
+
+         _curEduInfo = bobTransInfo.obj() ;
+      }
+      catch( std::exception &e )
+      {
+         PD_RC_CHECK( SDB_SYS, PDWARNING, "Failed to build transaction-info!" ) ;
+      }
+   done:
+      return rc ;
+   error:
+      goto done ;
+   }
+#endif
 
    /*
       _rtnContextCoord implement
@@ -4337,7 +4508,7 @@ namespace engine
          PD_RC_CHECK( rc, PDERROR, "Check sync control failed, rc: %d", rc ) ;
 
          logRecSize = record.alignedLen() ;
-         rc = _pTransCB->reservedLogSpace( logRecSize );
+         rc = _pTransCB->reservedLogSpace( logRecSize, cb );
          PD_RC_CHECK( rc, PDERROR,
                       "Failed to reserved log space(length=%u)",
                       logRecSize );
@@ -4485,7 +4656,7 @@ namespace engine
       }
       if ( _gotLogSize > 0 )
       {
-         _pTransCB->releaseLogSpace( _gotLogSize );
+         _pTransCB->releaseLogSpace( _gotLogSize, cb );
          _gotLogSize = 0;
       }
    }

@@ -57,6 +57,7 @@
 #include "dmsLobDef.hpp"
 #include "rtnLocalLobStream.hpp"
 #include "rtnContextBuff.hpp"
+#include "dpsTransCB.hpp"
 
 #include <map>
 
@@ -140,6 +141,7 @@ namespace engine
       RTN_CONTEXT_LOB,
       RTN_CONTEXT_SHARD_OF_LOB,
       RTN_CONTEXT_LIST_LOB,
+      RTN_CONTEXT_TRANS_DUMP
    } ;
 
    const CHAR *getContextTypeDesp( RTN_CONTEXT_TYPE type ) ;
@@ -469,6 +471,48 @@ namespace engine
    } ;
    typedef _rtnContextDump rtnContextDump ;
 
+#if defined SDB_ENGINE
+   /*
+      _rtnContextTransDump define
+   */
+   class _rtnContextTransDump : public _rtnContextDump
+   {
+      #define CACHE_RECORDS_MAX_NUM             100
+      #define CACHE_LOCK_MAX_NUM                1000
+      public:
+         _rtnContextTransDump ( INT64 contextID, UINT64 eduID ) ;
+         virtual ~_rtnContextTransDump () ;
+
+         INT32 open ( const BSONObj &selector, const BSONObj &matcher,
+                      INT64 numToReturn = -1, INT64 numToSkip = 0,
+                      BOOLEAN isDumpCurrentEdu = TRUE ) ;
+
+      public:
+         virtual RTN_CONTEXT_TYPE getType () const ;
+         virtual _dmsStorageUnit* getSU () { return NULL ; }
+
+      protected:
+         virtual INT32  _prepareData( _pmdEDUCB *cb ) ;
+
+      private:
+         INT32 monDumpTransInfoFromCB( _pmdEDUCB *cb, EDUID eduId ) ;
+
+      private:
+         SINT64                     _numToReturn ;
+         SINT64                     _numToSkip ;
+
+         BSONObj                    _orderby ;
+
+         TRANS_EDU_LIST             _eduList ;
+         
+         monTransInfo               _curTransInfo ;
+
+         BSONObj                    _curEduInfo ;
+
+   } ;
+   typedef _rtnContextTransDump rtnContextTransDump ;
+#endif
+
    /*
       _coordOrderKey define
    */
@@ -608,7 +652,6 @@ namespace engine
          BOOLEAN                    _preRead ;
 
          _ixmIndexKeyGen            *_keyGen ;
-         mthSelector                _selector ;
 
          BOOLEAN                    _needReOrder ;
    } ;

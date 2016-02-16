@@ -1043,7 +1043,7 @@ public class DBCollection {
 
 	/**
 	 * @fn void createIndex(String name, BSONObject key, boolean isUnique,
-	 *     boolean enforced)
+	 *     boolean enforced, int sortBufferSize)
 	 * @brief Create a index with name and key
 	 * @param name
 	 *            The index name
@@ -1054,12 +1054,19 @@ public class DBCollection {
 	 * @param enforced
 	 *            Whether the index is enforced unique This element is
 	 *            meaningful when isUnique is set to true
+	 * @param sortBufferSize
+	 *            The size(MB) of sort buffer used when creating index,
+                  zero means don't use sort buffer
 	 * @exception com.sequoiadb.exception.BaseException
 	 */
 	public void createIndex(String name, BSONObject key, boolean isUnique,
-			boolean enforced) throws BaseException {
+			boolean enforced, int sortBufferSize ) throws BaseException {
+	    if(sortBufferSize < 0){
+	        throw new BaseException("SDB_INVALIDARG", sortBufferSize);
+	    }
 		String commandString = SequoiadbConstants.ADMIN_PROMPT
 				+ SequoiadbConstants.CREATE_INX;
+		BSONObject hint = new BasicBSONObject() ;
 		BSONObject obj = new BasicBSONObject();
 		BSONObject dummyObj = new BasicBSONObject();
 		BSONObject createObj = new BasicBSONObject();
@@ -1069,38 +1076,87 @@ public class DBCollection {
 		obj.put(SequoiadbConstants.IXM_ENFORCED, enforced);
 		createObj.put(SequoiadbConstants.FIELD_COLLECTION, collectionFullName);
 		createObj.put(SequoiadbConstants.FIELD_INDEX, obj);
-
+		hint.put( SequoiadbConstants.IXM_FIELD_NAME_SORT_BUFFER_SIZE, 
+		        sortBufferSize );
 		SDBMessage rtn = adminCommand(commandString, createObj, dummyObj,
-				dummyObj, dummyObj, -1, -1, 0);
+				dummyObj, hint, -1, -1, 0);
 
 		int flags = rtn.getFlags();
 		if (flags != 0) {
 			throw new BaseException(flags, name, key, isUnique);
 		}
 	}
+	
+	/**
+     * @fn void createIndex(String name, String key, boolean isUnique,
+     *     boolean enforced, int sortBufferSize)
+     * @brief Create a index with name and key
+     * @param name
+     *            The index name
+     * @param key
+     *            The index key, like: {"key":1/-1}, ASC(1)/DESC(-1)
+     * @param isUnique
+     *            Whether the index elements are unique or not
+     * @param enforced
+     *            Whether the index is enforced unique This element is
+     *            meaningful when isUnique is set to true
+     * @param sortBufferSize
+     *            The size(MB) of sort buffer used when creating index,
+                  zero means don't use sort buffer
+     * @exception com.sequoiadb.exception.BaseException
+     */
+	public void createIndex(String name, String key, boolean isUnique,
+            boolean enforced, int sortBufferSize ) throws BaseException {
+	    BSONObject k = null;
+        if (key != null)
+            k = (BSONObject) JSON.parse(key);
+        createIndex(name, k, isUnique, enforced, sortBufferSize);
+	}
 
 	/**
-	 * @fn void createIndex(String name, String key, boolean isUnique, boolean
-	 *     enforced)
-	 * @brief Create a index with name and key
-	 * @param name
-	 *            The index name
-	 * @param key
-	 *            The index key, like: {"key":1/-1}, ASC(1)/DESC(-1)
-	 * @param isUnique
-	 *            Whether the index elements are unique or not
-	 * @param enforced
-	 *            Whether the index is enforced unique This element is
-	 *            meaningful when isUnique is set to true
-	 * @exception com.sequoiadb.exception.BaseException
-	 */
-	public void createIndex(String name, String key, boolean isUnique,
-			boolean enforced) throws BaseException {
-		BSONObject k = null;
-		if (key != null)
-			k = (BSONObject) JSON.parse(key);
-		createIndex(name, k, isUnique, enforced);
+     * @fn void createIndex(String name, BSONObject key, boolean isUnique,
+     *     boolean enforced)
+     * @brief Create a index with name and key
+     * @param name
+     *            The index name
+     * @param key
+     *            The index key, like: {"key":1/-1}, ASC(1)/DESC(-1)
+     * @param isUnique
+     *            Whether the index elements are unique or not
+     * @param enforced
+     *            Whether the index is enforced unique This element is
+     *            meaningful when isUnique is set to true
+     * @exception com.sequoiadb.exception.BaseException
+     */
+	public void createIndex(String name, BSONObject key, boolean isUnique,
+            boolean enforced ) throws BaseException {
+	    createIndex(name, key, isUnique, enforced, 
+	            SequoiadbConstants.IXM_SORT_BUFFER_DEFAULT_SIZE );
 	}
+	
+	/**
+     * @fn void createIndex(String name, String key, boolean isUnique, boolean
+     *     enforced)
+     * @brief Create a index with name and key
+     * @param name
+     *            The index name
+     * @param key
+     *            The index key, like: {"key":1/-1}, ASC(1)/DESC(-1)
+     * @param isUnique
+     *            Whether the index elements are unique or not
+     * @param enforced
+     *            Whether the index is enforced unique This element is
+     *            meaningful when isUnique is set to true
+     * @exception com.sequoiadb.exception.BaseException
+     */
+    public void createIndex(String name, String key, boolean isUnique,
+            boolean enforced) throws BaseException {
+        BSONObject k = null;
+        if (key != null)
+            k = (BSONObject) JSON.parse(key);
+        createIndex(name, k, isUnique, enforced, 
+                SequoiadbConstants.IXM_SORT_BUFFER_DEFAULT_SIZE );
+    }
 
 	/**
 	 * @fn void dropIndex(String name)

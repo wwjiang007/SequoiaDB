@@ -118,11 +118,6 @@ namespace engine
 
             CoordGroupList::iterator iterLst = groupLst.begin();
             rc = insertToAGroup( pReceiveBuffer, iterLst->first, pRouteAgent, cb );
-            if ( rc )
-            {
-               CoordGroupList emptyGroupLst;
-               adjustTransSession( emptyGroupLst, pRouteAgent, cb );
-            }
          }//end of if ( !cataInfo->isSharded() )
          else if( !cataInfo->isMainCL() )
          {
@@ -137,7 +132,11 @@ namespace engine
          }
          if ( SDB_OK != rc )
          {
-            if ( !isNeedRefreshCata && rtnCoordWriteRetryRC( rc ) )
+            if ( !isNeedRefreshCata
+                 && ( (!cb->isTransaction() && rtnCoordWriteRetryRC( rc ))
+                      || SDB_CLS_COORD_NODE_CAT_VER_OLD == rc
+                      || SDB_CLS_NO_CATALOG_INFO == rc
+                      || SDB_CAT_NO_MATCH_CATALOG == rc ))
             {
                isNeedRefreshCata = TRUE;
                continue;
@@ -616,7 +615,6 @@ namespace engine
    done:
       return rc ;
    error:
-      adjustTransSession( successGroupList, pRouteAgent, cb ) ;
       goto done ;
    }
 
@@ -688,7 +686,6 @@ namespace engine
    done:
       return rc;
    error:
-      adjustTransSession( successGroupList, pRouteAgent, cb );
       goto done;
    }
 

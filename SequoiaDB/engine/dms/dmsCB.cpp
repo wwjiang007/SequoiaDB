@@ -82,7 +82,8 @@ namespace engine
    :_writeCounter(0),
     _dmsCBState(DMS_STATE_NORMAL),
     _logicalSUID(0),
-    _tempCB(this)
+    _tempCB(this),
+    _ixmKeySorterCreator( NULL )
    {
       for ( UINT32 i = 0 ; i< DMS_MAX_CS_NUM ; ++i )
       {
@@ -348,7 +349,7 @@ namespace engine
          PD_RC_CHECK( rc, PDERROR, "Check sync control failed, rc: %d", rc ) ;
 
          logRecSize = record.alignedLen() ;
-         rc = pTransCB->reservedLogSpace( logRecSize );
+         rc = pTransCB->reservedLogSpace( logRecSize, cb );
          PD_RC_CHECK( rc, PDERROR,
                      "failed to reserved log space(length=%u)",
                      logRecSize );
@@ -438,7 +439,7 @@ namespace engine
       }
       if ( isReserved )
       {
-         pTransCB->releaseLogSpace( logRecSize );
+         pTransCB->releaseLogSpace( logRecSize, cb );
       }
       PD_TRACE_EXITRC ( SDB__SDB_DMSCB__CSCBNMREMV, rc );
       return rc ;
@@ -937,7 +938,7 @@ namespace engine
          PD_RC_CHECK( rc, PDERROR, "Check sync control failed, rc: %d", rc ) ;
 
          logRecSize = record.alignedLen() ;
-         rc = pTransCB->reservedLogSpace( logRecSize );
+         rc = pTransCB->reservedLogSpace( logRecSize, cb );
          PD_RC_CHECK( rc, PDERROR,
                      "failed to reserved log space(length=%u)",
                      logRecSize );
@@ -971,7 +972,7 @@ namespace engine
    done :
       if ( isReserved )
       {
-         pTransCB->releaseLogSpace( logRecSize );
+         pTransCB->releaseLogSpace( logRecSize, cb );
       }
       PD_TRACE_EXITRC ( SDB__SDB_DMSCB_ADDCS, rc );
       return rc ;
@@ -1421,6 +1422,33 @@ namespace engine
    {
       UINT32 pos = ossHash( pCSName ) % DMS_CS_MUTEX_BUCKET_SIZE ;
       _vecCSMutex[ pos ]->release() ;
+   }
+
+   void _SDB_DMSCB::setIxmKeySorterCreator( dmsIxmKeySorterCreator* creator )
+   {
+      _ixmKeySorterCreator = creator ;
+   }
+
+   dmsIxmKeySorterCreator* _SDB_DMSCB::getIxmKeySorterCreator()
+   {
+      return _ixmKeySorterCreator ;
+   }
+
+   dmsIxmKeySorter* _SDB_DMSCB::createIxmKeySorter( INT64 bufSize, const _dmsIxmKeyComparer& comparer )
+   {
+      SDB_ASSERT( NULL != _ixmKeySorterCreator, "_ixmKeySorterCreator can't be NULL" ) ;
+
+      return _ixmKeySorterCreator->createSorter( bufSize, comparer ) ;
+   }
+
+   void _SDB_DMSCB::releaseIxmKeySorter( dmsIxmKeySorter* sorter )
+   {
+      SDB_ASSERT( NULL != _ixmKeySorterCreator, "_ixmKeySorterCreator can't be NULL" ) ;
+
+      if ( NULL != sorter )
+      {
+         _ixmKeySorterCreator->releaseSorter( sorter ) ;
+      }
    }
 
    /*

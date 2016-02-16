@@ -204,6 +204,11 @@ namespace sdbclient
       }
       INT32 createIndex ( const BSONObj &indexDef, const CHAR *pName,
                           BOOLEAN isUnique, BOOLEAN isEnforced ) ;
+      INT32 createIndex ( const BSONObj &indexDef,
+                          const CHAR *pName,
+                          BOOLEAN isUnique,
+                          BOOLEAN isEnforced,
+                          INT32 sortBufferSize ) ;
       INT32 getIndexes ( _sdbCursor **cursor,
                          const CHAR *pName ) ;
       INT32 getIndexes ( sdbCursor &cursor,
@@ -324,6 +329,10 @@ namespace sdbclient
          return listLobs( &cursor.pCursor ) ;
       }
 
+   private:
+      INT32 _createIndex ( const BSONObj &indexDef, const CHAR *pName,
+                           BOOLEAN isUnique, BOOLEAN isEnforced,
+                           INT32 sortBufferSize ) ;
    } ;
    
    typedef class _sdbCollectionImpl sdbCollectionImpl ;

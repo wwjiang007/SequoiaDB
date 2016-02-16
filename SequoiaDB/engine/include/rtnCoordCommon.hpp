@@ -151,7 +151,8 @@ namespace engine
                                   pmdEDUCB *cb,
                                   REQUESTID_MAP &sendNodes,
                                   MSG_ROUTE_SERVICE_TYPE type =
-                                  MSG_ROUTE_SHARD_SERVCIE );
+                                  MSG_ROUTE_SHARD_SERVCIE,
+                                  BOOLEAN ignoreError = FALSE );
 
    INT32 rtnCoordSendRequestToNodeGroup( MsgHeader *pBuffer,
                                   UINT32 groupID,

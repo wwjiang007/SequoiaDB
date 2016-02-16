@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <cfloat>
 #include <string>
 #include <string.h>
 #include <stdio.h>
@@ -244,36 +245,49 @@ accesses) is the same as if
 #pragma warning( disable : 4996 )
 #endif
 
+#if defined(_WIN32) && _MSC_VER < 1900
+#pragma push_macro("snprintf")
+#define snprintf _snprintf
+#endif
+
     /** stringstream deals with locale so this is a lot faster than std::stringstream for UTF8 */
     class StringBuilder {
     public:
+       static const size_t SDB_DBL_SIZE = 3 + DBL_MANT_DIG - DBL_MIN_EXP + 1;
+       static const size_t SDB_S32_SIZE = 12;
+       static const size_t SDB_U32_SIZE = 11;
+       static const size_t SDB_S64_SIZE = 23;
+       static const size_t SDB_U64_SIZE = 22;
+       static const size_t SDB_S16_SIZE = 7;
+       static const size_t SDB_PTR_SIZE = 19;
+
         StringBuilder( int initsize=256 )
             : _buf( initsize ) {
         }
 
         StringBuilder& operator<<( double x ) {
-            return SBNUM( x , 25 , "%g" );
+            return SBNUM( x , SDB_DBL_SIZE, "%g" );
         }
         StringBuilder& operator<<( int x ) {
-            return SBNUM( x , 11 , "%d" );
+            return SBNUM( x , SDB_S32_SIZE, "%d" );
         }
         StringBuilder& operator<<( unsigned x ) {
-            return SBNUM( x , 11 , "%u" );
+            return SBNUM( x , SDB_U32_SIZE, "%u" );
         }
         StringBuilder& operator<<( long x ) {
-            return SBNUM( x , 22 , "%ld" );
+            return SBNUM( x , SDB_S64_SIZE, "%ld" );
         }
         StringBuilder& operator<<( unsigned long x ) {
-            return SBNUM( x , 22 , "%lu" );
+            return SBNUM( x , SDB_U64_SIZE, "%lu" );
         }
         StringBuilder& operator<<( long long x ) {
-            return SBNUM( x , 22 , "%lld" );
+            return SBNUM( x , SDB_S64_SIZE, "%lld" );
         }
         StringBuilder& operator<<( unsigned long long x ) {
-            return SBNUM( x , 22 , "%llu" );
+            return SBNUM( x , SDB_U64_SIZE, "%llu" );
         }
         StringBuilder& operator<<( short x ) {
-            return SBNUM( x , 8 , "%hd" );
+            return SBNUM( x , SDB_S16_SIZE, "%hd" );
         }
         StringBuilder& operator<<( char c ) {
             _buf.grow( 1 )[0] = c;
@@ -282,12 +296,14 @@ accesses) is the same as if
 
         void appendDoubleNice( double x ) {
             int prev = _buf.l;
-            char * start = _buf.grow( 32 );
-            int z = sprintf( start , "%.16g" , x );
+            const int maxSize = 32 ;
+            char * start = _buf.grow( maxSize );
+            int z = snprintf( start, maxSize, "%.16g" , x );
             assert( z >= 0 );
             _buf.l = prev + z;
-            if( strchr(start, '.') == 0 && strchr(start, 'E') == 0
-              && strchr(start, 'N') == 0 ) {
+            if( strchr(start, '.') == 0 && strchr(start, 'E') == 0 &&
+                strchr(start, 'N') == 0 && strchr(start, 'e') == 0 &&
+                strchr(start, 'n') == 0 ) {
                 write( ".0" , 2 );
             }
         }
@@ -318,7 +334,7 @@ accesses) is the same as if
         template <typename T>
         StringBuilder& SBNUM(T val,int maxSize,const char *macro)  {
             int prev = _buf.l;
-            int z = sprintf( _buf.grow(maxSize) , macro , (val) );
+            int z = snprintf( _buf.grow(maxSize) , maxSize, macro , (val) );
             assert( z >= 0 );
             _buf.l = prev + z;
             return *this;
@@ -327,6 +343,11 @@ accesses) is the same as if
 
 #if defined(_WIN32)
 #pragma warning( pop )
+#endif
+
+#if defined(_WIN32) && _MSC_VER < 1900
+#undef snprintf
+#pragma pop_macro("snprintf")
 #endif
 
 } // namespace bson

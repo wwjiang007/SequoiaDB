@@ -218,7 +218,11 @@ namespace engine
             pNewMsg = NULL;
          }
 
-         if ( !hasRefresh && rtnCoordWriteRetryRC( rc ) )
+         if ( !hasRefresh
+            && ( (!cb->isTransaction() && rtnCoordWriteRetryRC( rc ))
+                 || SDB_CLS_COORD_NODE_CAT_VER_OLD == rc
+                 || SDB_CLS_NO_CATALOG_INFO == rc
+                 || SDB_CAT_NO_MATCH_CATALOG == rc ))
          {
             isNeedRefresh = TRUE;
          }
@@ -319,7 +323,6 @@ namespace engine
    done:
       return rc;
    error:
-      adjustTransSession( sendGroupLst, pRouteAgent, cb );
       goto done;
    }
 

@@ -205,7 +205,8 @@ rtnFiles = [
       "rtn/rtnCoordLob.cpp",
       "rtn/rtnContextShdOfLob.cpp",
       "rtn/rtnLobFetcher.cpp",
-      "rtn/rtnContextListLob.cpp"
+      "rtn/rtnContextListLob.cpp",
+      "rtn/rtnIxmKeySorter.cpp"
       ]
 
 msgFiles = [
@@ -236,7 +237,9 @@ dmsFiles = [
       "dms/dmsStorageLobData.cpp",
       "dms/dmsLobDirectBuffer.cpp",
       "dms/dmsLobDirectInBuffer.cpp",
-      "dms/dmsLobDirectOutBuffer.cpp"
+      "dms/dmsLobDirectOutBuffer.cpp",
+      "dms/dmsIndexBuilder.cpp",
+      "dms/dmsIndexBuilderImpl.cpp"
       ]
 
 ixmFiles = [

@@ -26,6 +26,7 @@
 #include <netdb.h>
 #include <netinet/tcp.h>
 #else
+#include <mstcpip.h>
 #pragma comment(lib, "Ws2_32.lib")
 #endif
 #ifdef SDB_SSL

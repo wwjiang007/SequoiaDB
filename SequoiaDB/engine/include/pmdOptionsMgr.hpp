@@ -232,7 +232,8 @@ namespace engine
          INT32 parseAddressLine( const CHAR *pAddressLine,
                                  vector< pmdAddrPair > &vecAddr,
                                  const CHAR *pItemSep = ",",
-                                 const CHAR *pInnerSep = ":" ) const ;
+                                 const CHAR *pInnerSep = ":",
+                                 UINT32 maxSize = CLS_REPLSET_MAX_NODE_SIZE ) const ;
 
          string makeAddressLine( const vector< pmdAddrPair > &vecAddr,
                                  CHAR chItemSep = ',',
@@ -455,6 +456,7 @@ namespace engine
          OSS_INLINE INT32  syncStrategy () const { return _syncStrategy ; }
          OSS_INLINE UINT32 replBucketSize () const { return _replBucketSize ; }
          OSS_INLINE BOOLEAN transactionOn () const { return _transactionOn ; }
+         OSS_INLINE UINT32 transTimeout () const { return _transTimeout; }
          OSS_INLINE BOOLEAN memDebugEnabled () const { return _memDebugEnabled ; }
          OSS_INLINE UINT32 memDebugSize () const { return _memDebugSize ; }
          OSS_INLINE UINT32 indexScanStep () const { return _indexScanStep ; }
@@ -508,6 +510,7 @@ namespace engine
          BOOLEAN     _traceOn ;
          UINT32      _traceBufSz ;
          BOOLEAN     _transactionOn ;
+         UINT32      _transTimeout ;
          UINT32      _sharingBreakTime ;
          UINT32      _startShiftTime ;
          UINT32      _logBuffSize ;
